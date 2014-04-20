@@ -1,0 +1,36 @@
+<div class="pages">
+			<div class="title">
+				<h1><a title="Serving Tiles" href="http://switch2osm.org/serving-tiles/">Serving Tiles</a></h1>
+			</div>
+			<div class="meta">
+							</div>
+			
+			<div class="entry">
+				<p>Tiles from a third-party provider are the simplest way to make the switch to OpenStreetMap, and offer clarity of cost. However, if you’d like to take full control of your destiny, you can render and serve your own tiles. This section explains how.</p>
+<p><img width="510" height="231" alt="" src="http://switch2osm.org/wp-content/uploads/2012/01/serving-tiles.png" title="Serving Tiles" class="aligncenter size-full wp-image-182"></p>
+<h2>Is it for you?</h2>
+<p>Both generating and serving tiles incur significant hardware requirements, especially if you need global coverage and regular updates.</p>
+<p>If you are setting up your own tile server, we recommend that you use <a href="http://www.ubuntu.com/">Ubuntu Linux</a>.</p>
+<h2>The options</h2>
+<ol>
+<li><a href="http://switch2osm.org/serving-tiles/building-a-tile-server-from-packages/" title="Building a tile server from packages">Build a tile server using packages</a></li>
+<li><a href="http://switch2osm.org/serving-tiles/manually-building-a-tile-server/" title="Manually building a tile server">Build a tile server from source</a></li>
+<li><a href="http://switch2osm.org/serving-tiles/using-an-all-in-one-solution/" title="Using an all-in-one solution">Use an all-in-one solution</a></li>
+</ol>
+<h2>System requirements</h2>
+<p>Serving your own maps is a fairly intensive task. Depending on the size of the area you’re interested in serving and the traffic you expect the system requirements will vary. In general, requirements will range from 10-20GB of storage, 4GB of memory, and a modern dual-core processor for a city-sized region to 300GB+ of fast storage, 24GB of memory, and a quad-core processor for the entire planet.</p>
+<p>We would recommend that you begin with extracts of OpenStreetMap data &ndash; for example, a city, county or small country &ndash; rather than spending a week importing the whole world (planet.osm) and then having to restart because of a configuration mistake! You can download extracts from:</p>
+<ul>
+<li><a href="http://download.geofabrik.de/osm/">Geofabrik</a> (countries and provinces)</li>
+<li><a href="http://metro.teczno.com/">Metro extracts</a> (city areas)</li>
+</ul>
+<h2>The toolchain</h2>
+<p>We use a series of tools for generating and serving map tiles.</p>
+<p><strong>Apache</strong> provides the front end server that handles requests from your web browser and passes the request to mod_tile. The Apache web server can also be used to serve static web content like the HTML, JavaScript, or CSS for your map webpage.</p>
+<p>Once Apache handles the request from the web user, it passes the request to <strong>mod_tile</strong> to deal with. Mod_tile checks if the tile has already been created and is ready for use or whether it needs to be updated due to not being in the cache already. If it is already available and doesn’t need to be rendered, then it immediately sends the tile back to the client. If it does need to be rendered, then it will add it to a “render request” queue, and when it gets to the top of the queue, a tile renderer will render it and send the tile back to the client.</p>
+<p>We use a tool called <strong>Mapnik</strong> to render tiles. It pulls requests from the work queue as fast as possible, extracts data from various data sources according to the style information, and renders the tile. This tile is passed back to the client and moves on to the next item in the queue.</p>
+<p>For rendering, OpenStreetMap data is stored in a <strong>PostgreSQL</strong> database created by a tool called <strong>osm2pgsql</strong>. These two pieces work together to allow efficient access to the OpenStreetMap geographic data. It is possible to keep the data in the PostgreSQL database up to date using a stream of diff files produced every 60 seconds on the main OpenStreetMap server.</p>
+<p>&nbsp;</p>
+
+							</div>
+		</div>

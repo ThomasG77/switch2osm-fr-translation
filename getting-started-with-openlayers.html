@@ -1,0 +1,60 @@
+<div class="pages">
+			<div class="title">
+				<h1><a title="Getting started with OpenLayers" href="http://switch2osm.org/using-tiles/getting-started-with-openlayers/">Getting started with OpenLayers</a></h1>
+			</div>
+			<div class="meta">
+							</div>
+			
+			<div class="entry">
+				<p><img width="315" height="57" alt="" src="http://switch2osm.org/wp-content/uploads/2012/01/openlayers-logo-big.png" title="openlayers-logo-big" style="margin: 10px;" class="alignright size-full wp-image-151">OpenLayers has long been the standard choice for embedding a browsable OpenStreetMap view into a webpage. A mature and comprehensive library (over 400k of minimised JavaScript), it has a moderate learning curve but is capable of many applications beyond a simple “slippy map”: its features include full projection support, vector drawing, overview maps, and much more.</p>
+<p>On this page we explain how to create a very simple embedded map, but there are many more <a href="http://openlayers.org/dev/examples/">examples on OpenLayers.org</a> showing the full capabilities of the software.</p>
+<h2>A simple embedded map</h2>
+<p>Paste the following into a new HTML file to get up and running with OpenLayers</p>
+<pre>&lt;!DOCTYPE HTML&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;OpenLayers Basic Example&lt;/title&gt;
+
+    &lt;script src="http://www.openlayers.org/api/OpenLayers.js"&gt;&lt;/script&gt;
+    &lt;script&gt;
+      function init() {
+        map = new OpenLayers.Map("mapdiv");
+        var mapnik = new OpenLayers.Layer.OSM();
+        map.addLayer(mapnik);
+
+        var lonlat = new OpenLayers.LonLat(-1.788, 53.571).transform(
+            new OpenLayers.Projection("EPSG:4326"), // transform from WGS 1984
+            new OpenLayers.Projection("EPSG:900913") // to Spherical Mercator
+          );
+
+        var zoom = 13;
+
+        var markers = new OpenLayers.Layer.Markers( "Markers" );
+        map.addLayer(markers);
+        markers.addMarker(new OpenLayers.Marker(lonlat));
+
+        map.setCenter(lonlat, zoom);
+      }
+    &lt;/script&gt;
+
+    &lt;style&gt;
+    #mapdiv { width:350px; height:250px; }
+    div.olControlAttribution { bottom:3px; }
+    &lt;/style&gt;
+
+&lt;/head&gt;
+
+&lt;body onload="init();"&gt;
+    &lt;p&gt;My HTML page with an embedded map&lt;/p&gt;
+    &lt;div id="mapdiv"&gt;&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+<p>This example shows how to initialise a map object which will appear within a div on your HTML page. A LonLat object is created to represent the centre point of the map. Try playing with the latitude, longitude values. A call to ‘transform’ sorts out the projections, and we use this same location to place a marker.</p>
+<h2>Downloading OpenLayers</h2>
+<p>The above example also shows how, with a script tag, you can reference the OpenLayers javascript hosted remotely at openlayers.org . There are advantages and disadvantages to this approach. The alternative is to download OpenLayers and host it yourself alongside your HTML.</p>
+<p>You can download a zip file from <a href="http://openlayers.org">openlayers.org</a> which contains many files, only some of which are needed. In fact you might use only OpenLayers.js a single file of compacted javascript.</p>
+<p>The ‘theme’ and ‘image’ directories are also needed if you wish to self-host all of the required resources. You can configure visual aspects of OpenLayers using those files. The ‘lib’ directory has the source javascript before it was compacted into a single file, but you can actually run OpenLayers in ‘multi-file’ mode from these. That can be a good idea as you develop with the OpenLayers API, since browser error reports will take you to line numbers showing something more meaningful.</p>
+<p>However you chose to work with OpenLayers, the library is fully open-source (under a modified BSD license) and can be used for free in your projects and commercial products.</p>
+
+							</div>
+		</div>

@@ -1,0 +1,170 @@
+<div class="pages">
+            <div class="title">
+                <h1><a title="Getting started with Leaflet" href="http://switch2osm.org/using-tiles/getting-started-with-leaflet/">Getting started with Leaflet</a></h1>
+            </div>
+            <div class="meta">
+                            </div>
+
+            <div class="entry">
+                <p><img width="187" height="65" src="http://switch2osm.org/wp-content/uploads/2012/01/leaflet-logo.png" alt="" title="leaflet-logo" class="alignright size-full wp-image-140">Leaflet is a new JavaScript library for embedding maps which is quickly gaining popularity. Simpler and smaller than OpenLayers, it is a good choice for those with fairly standard embedding needs.</p>
+<p>On this page, we explain how to create a simple embedded map with markers using Leaflet, as shown on a recent switcher to OpenStreetMap, property site <a href="http://www.plotbrowser.com/?map">PlotBrowser.com</a>.</p>
+<h2>Downloading Leaflet</h2>
+<p>You can download Leaflet from its own site at <a href="http://leafletjs.com/">leafletjs.com</a>. The source is available as a .zip, or you can <a href="https://github.com/Leaflet/Leaflet">fork it on GitHub</a>.</p>
+<p>Leaflet uses a permissive BSD open-source licence so can be incorporated into any site without legal worries.</p>
+<p>Copy the <code>dist/</code> directory to the place on your webserver where the embedding page will be served from, and rename it <code>leaflet/</code> .</p>
+<h2>Embedding Leaflet in your page</h2>
+<p>For ease of use, we’ll create a .js file with all our map code in it. You can of course put this inline in the main page if you like. Create this page in your <code>leaflet/</code> directory and call it <code>leafletembed.js</code>.</p>
+<p>Use the following code in leaflet_embed.js:</p>
+<pre>var map;
+var ajaxRequest;
+var plotlist;
+var plotlayers=[];
+
+function initmap() {
+    // set up the map
+    map = new L.Map('map');
+
+    // create the tile layer with correct attribution
+    var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    var osmAttrib='Map data &copy; &lt;a href="http://openstreetmap.org"&gt;OpenStreetMap&lt;/a&gt; contributors';
+    var osm = new L.TileLayer(osmUrl, {minZoom: 8, maxZoom: 12, attribution: osmAttrib});
+
+    // start the map in South-East England
+    map.setView(new L.LatLng(51.3, 0.7),9);
+    map.addLayer(osm);
+}</pre>
+<p>Then include it in your embedding page like this:</p>
+<pre>&lt;link rel="stylesheet" type="text/css" href="leaflet/leaflet.css" /&gt;
+&lt;script type="text/javascript" src="leaflet/leaflet.js"&gt;&lt;/script&gt;
+&lt;script type="text/javascript" src="leaflet/leafletembed.js"&gt;&lt;/script&gt;</pre>
+<p>Add an appropriately-sized <code>div</code> called ‘<code>map</code>‘ to your embedding page; then, finally, add some JavaScript to your embedding page to initialise the map, either at the end of the page or on an <code>onload</code> event:</p>
+<pre>initmap();</pre>
+<p>Congratulations; you have embedded your first map with Leaflet.</p>
+<h2>Showing markers as the user pans around the map</h2>
+<p>There are several excellent <a href="http://leaflet.cloudmade.com/examples.html">examples on the Leaflet website</a>. Here we’ll demonstrate one more common case: showing clickable markers on the map, where the marker locations are reloaded from the server as the user pans around.</p>
+<p>First, we’ll add the standard AJAX code of the type you’ll have seen a thousand times before. At the top of the <code>initmap</code> function in <code>leafletembed.js</code>, add:</p>
+<pre>// set up AJAX request
+ajaxRequest=getXmlHttpObject();
+if (ajaxRequest==null) {
+    alert ("This browser does not support HTTP Request");
+    return;
+}</pre>
+<p>then add this new function elsewhere in <code>leafletembed.js</code>:</p>
+<pre>function GetXmlHttpObject() {
+    if (window.XMLHttpRequest) { return new XMLHttpRequest(); }
+    if (window.ActiveXObject)  { return new ActiveXObject("Microsoft.XMLHTTP"); }
+    return null;
+}</pre>
+<p>Next, we’ll add a function to request the list of markers (in JSON) for the current map viewport:</p>
+<pre>function askForPlots() {
+    // request the marker info with AJAX for the current bounds
+    var bounds=map.getBounds();
+    var minll=bounds.getSouthWest();
+    var maxll=bounds.getNorthEast();
+    var msg='leaflet/findbybbox.cgi?format=leaflet&amp;bbox='+minll.lng+','+minll.lat+','+maxll.lng+','+maxll.lat;
+    ajaxRequest.onreadystatechange = stateChanged;
+    ajaxRequest.open('GET', msg, true);
+    ajaxRequest.send(null);
+}</pre>
+<p>This talks to a serverside script which simply returns a JSON array of the properties we want to display on the map, like this:</p>
+<pre>[{"name":"Tunbridge Wells, Langton Road, Burnt Cottage",
+  "lon":"0.213102",
+  "lat":"51.1429",
+  "details":"A Grade II listed five bedroom wing in need of renovation."}</pre>
+<p>(etc.)</p>
+<p>When this arrives, we'll clear the existing markers and display the new ones, creating a rudimentary pop-up window for each one:</p>
+<pre>function stateChanged() {
+    // if AJAX returned a list of markers, add them to the map
+    if (ajaxRequest.readyState==4) {
+        //use the info here that was returned
+        if (ajaxRequest.status==200) {
+            plotlist=eval("(" + ajaxRequest.responseText + ")");
+            removeMarkers();
+            for (i=0;i&lt;plotlist.length;i++) {
+                var plotll = new L.LatLng(plotlist[i].lat,plotlist[i].lon, true);
+                var plotmark = new L.Marker(plotll);
+                plotmark.data=plotlist[i];
+                map.addLayer(plotmark);
+                plotmark.bindPopup("&lt;h3&gt;"+plotlist[i].name+"&lt;/h3&gt;"+plotlist[i].details);
+                plotlayers.push(plotmark);
+            }
+        }
+    }
+}
+
+function removeMarkers() {
+    for (i=0;i&lt;plotlayers.length;i++) {
+        map.removeLayer(plotlayers[i]);
+    }
+    plotlayers=[];
+}</pre>
+<p>Finally, let’s wire this into the rest of our script. After we’ve added the map in <code>initmap</code>, let’s ask for the first load of markers, and set up an event to do this every time the map is panned. Add this just at the end of <code>initmap</code>:</p>
+<pre>   askForPlots();
+    map.on('moveend', onMapMove);
+}
+
+// then add this as a new function...
+function onMapMove(e) { askForPlots(); }</pre>
+<p><!-- That's it. You can see <a href="http://www.plotbrowser.com/?map">the finished result on PlotBrowser.com</a>. &#8211;></p>
+
+                            </div>
+        </div>
+
+
+
+    </div>
+
+
+    <div id="sidebar">
+        <div id="icl_lang_sel_widget" class="widget icl_languages_selector"><div id="lang_sel"  >
+    <ul>
+        <li><a href="#" class="lang_sel_sel icl-en">
+
+            <img  class="iclflag" src="http://switch2osm.org/wp-content/plugins/sitepress-multilingual-cms/res/flags/en.png" alt="en"  title="English" />
+            &nbsp;<span  class="icl_lang_sel_current">English</span></a>                    </li>
+    </ul>
+</div>
+</div><div id="search-2" class="widget widget_search"><h4 class="widgettitle">Search</h4>           <form method="get" id="sidebarsearch" action="http://switch2osm.org" >
+                <label class="hidden" for="s">Search:</label>
+                <div>
+                    <input type="text" value="" name="s" id="s" />
+                    <input type="submit" id="searchsubmit" value="Search" />
+                </div>
+            </form>
+</div><div id="nav_menu-3" class="widget widget_nav_menu"><h4 class="widgettitle">Links</h4><div class="menu-links-container"><ul id="menu-links" class="menu"><li id="menu-item-253" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-253"><a href="http://www.openstreetmap.org/">OpenStreetMap</a></li>
+<li id="menu-item-254" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-254"><a href="http://planet.openstreetmap.org/">OSM data download (planet.osm)</a></li>
+<li id="menu-item-255" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-255"><a href="http://www.osmfoundation.org/">OSM Foundation</a></li>
+</ul></div></div>   </div>
+
+
+    </div>
+        <div id="footer">
+            <div class="left">&copy; 2013 OpenStreetMap and contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>.</div>
+            <div class="right"><a href="http://picomol.de/picolight/" rel="nofollow">Design by picomol</a>. Powered by <a href="http://www.wordpress.org">WordPress</a>.
+        </div>
+    </div>
+</div>
+        <script type='text/javascript' src='http://switch2osm.org/wp-includes/js/comment-reply.min.js?ver=3.9'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var icl_vars = {"current_language":"en","icl_home":"http:\/\/switch2osm.org\/"};
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://switch2osm.org/wp-content/plugins/sitepress-multilingual-cms/res/js/sitepress.js?ver=3.9'></script>
+
+<!-- Piwik -->
+<script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://piwik.openstreetmap.org/" : "http://piwik.openstreetmap.org/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 2);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript>&lt;p&gt;&lt;img src="http://piwik.openstreetmap.org/piwik.php?idsite=2" style="border:0" alt="" /&gt;&lt;/p&gt;</noscript>
+<!-- End Piwik Tracking Code -->
+
+
+
+</p></div></div>

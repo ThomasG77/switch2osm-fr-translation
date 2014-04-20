@@ -1,0 +1,279 @@
+<div class="pages">
+			<div class="title">
+				<h1><a title="Manually building a tile server" href="http://switch2osm.org/serving-tiles/manually-building-a-tile-server/">Manually building a tile server</a></h1>
+			</div>
+			<div class="meta">
+							</div>
+			
+			<div class="entry">
+				<p>This page describes how to install, setup and configure all the necessary software to operate your own tile server.</p>
+<p>The step-by-step instructions are designed for an older version of <a href="http://www.ubuntu.com/">Ubuntu Linux</a>&nbsp;(10.04 LTS (Lucid Lynx)), and are still designed for Mapnik version 0.7. <strong>Unless you do have a relatively old (stable enterprise) distribution, it is recommended to use the <a href="http://switch2osm.org/serving-tiles/manually-building-a-tile-server-12-04/">newer instructions</a> for Ubuntu 12.04</strong> .</p>
+<h1>Software installation</h1>
+<p>The OSM tile server stack is a collection of programs and libraries that work together to create a tile server. As so often with OpenStreetMap, there are many ways to achieve this goal and nearly all of the components have alternatives that have various specific advantages and disadvantages. This tutorial describes the most standard version that is also used on the main OpenStreetMap.org tile server.</p>
+<p>It consists of 5 main components: Mod_tile, renderd, mapnik, osm2pgsql and a postgresql/postgis database. Mod_tile is an apache module, that serves cached tiles and decides which tiles need re-rendering &ndash; either because they are not yet cached or because they are outdated. Renderd provides a priority queueing system for rendering requests to manage and smooth out the load from rendering requests. Mapnik is the software library that does the actual rendering and is used by renderd.</p>
+<p>In order to build these components, a variety of dependencies need to be installed first:</p>
+<p>On Ubuntu, these can be installed with the following instructions</p>
+<pre>sudo apt-get install subversion git-core tar unzip wget bzip2 build-essential autoconf libtool libxml2-dev libgeos-dev libpq-dev libbz2-dev proj screen munin-node munin htop</pre>
+<h3>Installing postgresql / postgis</h3>
+<p>On Ubuntu there are pre-packaged versions of both postgis and postgresql, so these can simply be installed via the ubuntu package manager.</p>
+<pre>sudo apt-get install postgresql-8.4-postgis postgresql-contrib-8.4 postgresql-server-dev-8.4</pre>
+<p>Now you need to create a postgis database. The defaults of various programs assume the database is called gis and we will use the same convention in this tutorial, although this is not necessary. Substitute your username for <em>username</em> in the two places below. This should be the username that will render maps with Mapnik.</p>
+<pre>sudo -u postgres -i
+createuser username # answer yes for superuser (although this isn't strictly necessary)
+createdb -E UTF8 -O username gis
+createlang plpgsql gis
+exit</pre>
+<p>Set up PostGIS on the postresql database:</p>
+<pre>psql -f /usr/share/postgresql/8.4/contrib/postgis.sql -d gis</pre>
+<p>This should respond with many lines ending with:</p>
+<pre>...
+CREATE FUNCTION
+COMMIT
+...
+DROP FUNCTION</pre>
+<p>Give your newly-created user permission to access some of the PostGIS extensions’ data. Make sure you replace username with your user’s name:</p>
+<pre>psql -d gis -c "ALTER TABLE geometry_columns OWNER TO username; ALTER TABLE spatial_ref_sys OWNER TO username;"</pre>
+<h3>Installing osm2pgsql</h3>
+<p>Although there might be a osm2pgsql package in the repository, it is likely rather old and so we need to compile a newer one from source</p>
+<pre>mkdir ~/src
+cd ~/src
+git clone git://github.com/openstreetmap/osm2pgsql.git
+cd osm2pgsql
+./autogen.sh
+./configure
+make
+sudo make install
+psql -f /usr/local/share/osm2pgsql/900913.sql -d gis</pre>
+<h3>Install Mapnik library</h3>
+<p>Next, we need to install the Mapnik library. Again the version of Mapnik packaged with Ubuntu 10.04 is too old and we need to install it from source. Mapnik is used to render the OpenStreetMap data into the tiles used for an OpenLayers web map. To start, we’ll install the dependencies for the Mapnik library followed by downloading and compiling the source:</p>
+<pre>sudo apt-get install libltdl3-dev libpng12-dev libtiff4-dev libicu-dev libboost-python1.40-dev python-cairo-dev python-nose libboost1.40-dev libboost-filesystem1.40-dev libboost-iostreams1.40-dev libboost-regex1.40-dev libboost-thread1.40-dev libboost-program-options1.40-dev libboost-python1.40-dev libfreetype6-dev libcairo2-dev libcairomm-1.0-dev libgeotiff-dev libtiff4 libtiff4-dev libtiffxx0c2 libsigc++-dev libsigc++0c2 libsigx-2.0-2 libsigx-2.0-dev libgdal1-dev python-gdal imagemagick ttf-dejavu</pre>
+<p>Build the Mapnik library from source:</p>
+<pre>cd ~/src
+git clone git://github.com/mapnik/mapnik
+cd mapnik
+git branch 0.7 origin/0.7.x
+git checkout 0.7
+
+python scons/scons.py configure INPUT_PLUGINS=all OPTIMIZATION=3 SYSTEM_FONTS=/usr/share/fonts/truetype/
+python scons/scons.py
+sudo python scons/scons.py install
+sudo ldconfig</pre>
+<p>Verify that Mapnik has been installed correctly:</p>
+<pre>python
+&gt;&gt;&gt; import mapnik
+&gt;&gt;&gt;</pre>
+<p>If python replies with the second chevron prompt &gt;&gt;&gt; and without errors, then Mapnik library was found by Python. Congratulations!</p>
+<h3>Install mod_tile and renderd</h3>
+<p>Mod_tile and renderd need further dependencies installed:</p>
+<pre>sudo apt-get install apache2 apache2-threaded-dev apache2-mpm-prefork apache2-utils libagg-dev</pre>
+<p>Compile the mod_tile source code:</p>
+<pre>cd ~/src
+svn co http://svn.openstreetmap.org/applications/utils/mod_tile
+cd mod_tile
+./autogen.sh
+./configure
+make
+sudo make install
+sudo make install-mod_tile
+sudo ldconfig</pre>
+<h3>Install Mapnik style-sheet</h3>
+<p>Next, we need to install the OpenStreetMap Mapnik tools, which include the default style file and tools to help Mapnik render OpenStreetMap data:</p>
+<pre>cd ~/src
+svn co -r 27279 http://svn.openstreetmap.org/applications/rendering/mapnik mapnik-style</pre>
+<p>The specific svn revision is necessary if you are using mapnik 0.7 as listed in this tutorial. Later versions require mapnik 2.0 or above.</p>
+<p>Mapnik uses prepared files to generate coastlines and ocean areas for small scale maps since it is faster than reading the entire database for this information. Downloading the coastline data requires about 400Mb of download.</p>
+<pre>cd ~/src/mapnik-style
+sudo ./get-coastlines.sh /usr/local/share</pre>
+<h1>Software configuration</h1>
+<p>Now that all of the necessary software is installed, you will need to configure some of the software to work correctly.</p>
+<h3>Configure mapnik style-sheet</h3>
+<p>In order for mapnik to find the correct postgis database and the coast line data, you will need to configure the mapnik style-sheet to your local settings. There are a number of different style-sheets publically available and you can of course create your own ones. Each style-sheet might be slightly different in how to configure it and so this page describes how to configure the “default” OpenStreetMap style-sheet that was installed with the mapnik-tools.</p>
+<p>In your style-sheet directory (e.g. ~/src/mapnik-style) there should be a directory inc. There are a number of files you need to adapt in this directory:</p>
+<pre>cd inc
+cp fontset-settings.xml.inc.template fontset-settings.xml.inc
+cp datasource-settings.xml.inc.template datasource-settings.xml.inc
+cp settings.xml.inc.template settings.xml.inc</pre>
+<p>Now you need to modify each of these files:</p>
+<h5>settings.xml.inc</h5>
+<p>replace</p>
+<pre>&lt;ENTITY symbols "%(symbols)s"&gt;</pre>
+<p>with</p>
+<pre>&lt;ENTITY symbols "symbols"&gt;</pre>
+<p>replace</p>
+<pre>&lt;!ENTITY osm2pgsql_projection "&amp;srs%(epsg)s;"&gt;</pre>
+<p>with (assuming you will be using the defaul projection 900913)</p>
+<pre>&lt;!ENTITY osm2pgsql_projection "&amp;srs900913;"&gt;</pre>
+<p>replace</p>
+<pre>&lt;!ENTITY dwithin_node_way "&amp;dwithin_%(epsg)s;"&gt;</pre>
+<p>with (assuming you will be using the default projection 900913)</p>
+<pre>&lt;!ENTITY dwithin_node_way "&amp;dwithin_900913;"&gt;</pre>
+<p>replace</p>
+<pre>&lt;!ENTITY world_boundaries "%(world_boundaries)s"&gt;</pre>
+<p>with (assuming you installed the coast line data in /usr/local/share/world_boundaries)</p>
+<pre>&lt;!ENTITY world_boundaries "/usr/local/share/world_boundaries"&gt;</pre>
+<p>replace</p>
+<pre>&lt;!ENTITY prefix "%(prefix)s"&gt;</pre>
+<p>with (assuming you are using the default database table prefix)</p>
+<pre>&lt;!ENTITY prefix "planet_osm"&gt;</pre>
+<h5>datasource-settings.xml.inc</h5>
+<p>In this file you will need to enter your database settings. You are running postgresql on the same machine as the rendering stack, so you can comment out the parameters “password”, “host” and “port” with an HTML-style comment. This will enable mapnik to use the “unix local user” as an authentication method.</p>
+<p>Change the “dbname” from “%(dbname)s” to “gis”, “estimate_extent” to “false”, and “extent” to “-20037508,-19929239,20037508,19929239″ so that the file now reads:</p>
+<pre>&lt;!--
+Settings for your postgres setup.
+
+Note: feel free to leave password, host, port, or use blank
+--&gt;
+
+&lt;Parameter name="type"&gt;postgis&lt;/Parameter&gt;
+&lt;!-- &lt;Parameter name="password"&gt;%(password)s&lt;/Parameter&gt; --&gt;
+&lt;!-- &lt;Parameter name="host"&gt;%(host)s&lt;/Parameter&gt; --&gt;
+&lt;!-- &lt;Parameter name="port"&gt;%(port)s&lt;/Parameter&gt; --&gt;
+&lt;!-- &lt;Parameter name="user"&gt;%(user)s&lt;/Parameter&gt; --&gt;
+&lt;Parameter name="dbname"&gt;gis&lt;/Parameter&gt;
+&lt;!-- this should be 'false' if you are manually providing the 'extent' --&gt;
+&lt;Parameter name="estimate_extent"&gt;false&lt;/Parameter&gt;
+&lt;!-- manually provided extent in epsg 900913 for whole globe --&gt;
+&lt;!-- providing this speeds up Mapnik database queries --&gt;
+&lt;Parameter name="extent"&gt;-20037508,-19929239,20037508,19929239&lt;/Parameter&gt;</pre>
+<h5>fontset-settings.xml.inc</h5>
+<p>This file contains font definitions, and information about how to change the default font.&nbsp; It is recommended that you don’t edit this right now.</p>
+<h3>Configure renderd</h3>
+<p>Change the the renderd settings by editing the /usr/local/etc/renderd.conf and change the following lines like so (remember to change username to your user’s name):</p>
+<pre>socketname=/var/run/renderd/renderd.sock
+plugins_dir=/usr/local/lib/mapnik/input
+font_dir=/usr/share/fonts/truetype/ttf-dejavu
+XML=/home/username/src/mapnik-style/osm.xml
+HOST=localhost</pre>
+<p>Create the files required for the mod_tile system to run (remember to change username to your user’s name):</p>
+<pre>sudo mkdir /var/run/renderd
+sudo chown username /var/run/renderd
+sudo mkdir /var/lib/mod_tile
+sudo chown username /var/lib/mod_tile</pre>
+<h3>Configure mod_tile</h3>
+<p>Next, we need to tell the Apache web server about our new mod_tile installation by creating the file /etc/apache2/conf.d/mod_tile and adding one line:</p>
+<pre>LoadModule tile_module /usr/lib/apache2/modules/mod_tile.so</pre>
+<p>Also, Apache’s default website configuration file needs to be modified to include mod_tile settings. Modify the file /etc/apache2/sites-available/default to include the following lines immediately after the admin e-mail address line:</p>
+<pre>LoadTileConfigFile /usr/local/etc/renderd.conf
+ModTileRenderdSocketName /var/run/renderd/renderd.sock
+# Timeout before giving up for a tile to be rendered
+ModTileRequestTimeout 0
+# Timeout before giving up for a tile to be rendered that is otherwise missing
+ModTileMissingRequestTimeout 30</pre>
+<h1>Tuning your system</h1>
+<p>A tile server can put a lot of load on hard- and software. The default settings may therefore not be appropriate and a significant improvement can potentially be achieved through tuning various parameters.</p>
+<h3>Tuning postgresql</h3>
+<p>The default configuration for PostgreSQL 8.4 needs to be tuned for the amount of data you are about to add to it. Edit the file /etc/postgresql/8.4/main/postgresql.conf and make the following changes:</p>
+<pre>shared_buffers = 128MB
+checkpoint_segments = 20
+maintenance_work_mem = 256MB
+autovacuum = off</pre>
+<p>These changes require a kernel configuration change, which needs to be applied every time that the computer is rebooted. As root, edit /etc/sysctl.conf and add these lines near the top after the other “kernel” definitions:</p>
+<pre># Increase kernel shared memory segments - needed for large databases
+kernel.shmmax=268435456</pre>
+<p>Reboot your computer. Run this:</p>
+<pre>sudo sysctl kernel.shmmax</pre>
+<p>and verify that it displays as 268435456.</p>
+<h1>Loading data into your server</h1>
+<h3>Get the latest OpenStreetMap data</h3>
+<p>Retrieve a piece of OpenStreetMap data from http://planet.openstreetmap.org/. Since the whole planet is at least 18GB when compressed, there are links to smaller country or state sized extracts on that page. Since it is smaller and faster to interact with, the PBF file format is preferable when available. In this case we’ll download the entire planet file by issuing the following command:</p>
+<pre>cd planet
+wget http://planet.openstreetmap.org/planet/planet-latest.osm.bz2</pre>
+<h3>Importing data into the database</h3>
+<p>With the conversion tool compiled and the database prepared, the following command will insert the OpenStreetMap data you downloaded earlier into the database. This step is very disk I/O intensive and will take roughly 30 hours depending on the speed of the computer performing the conversion and the size of the data you retrieved from the server.</p>
+<pre>osm2pgsql --slim -d gis -C 17000 ~/planet/planet-latest.osm.bz2</pre>
+<p>Let’s have a look at your data import as it progresses. The first part of the osm2pgsql output looks scary, but is normal:</p>
+<pre>Using projection SRS 900913 (Spherical Mercator)
+Setting up table: planet_osm_point
+NOTICE: table "planet_osm_point" does not exist, skipping
+NOTICE: table "planet_osm_point_tmp" does not exist, skipping
+Setting up table: planet_osm_line
+NOTICE: table "planet_osm_line" does not exist, skipping
+NOTICE: table "planet_osm_line_tmp" does not exist, skipping
+Setting up table: planet_osm_polygon
+NOTICE: table "planet_osm_polygon" does not exist, skipping
+NOTICE: table "planet_osm_polygon_tmp" does not exist, skipping
+Setting up table: planet_osm_roads
+NOTICE: table "planet_osm_roads" does not exist, skipping
+NOTICE: table "planet_osm_roads_tmp" does not exist, skipping
+Mid: pgsql, scale=100, cache=4096MB, maxblocks=524289*8192
+Setting up table: planet_osm_nodes
+NOTICE: table "planet_osm_nodes" does not exist, skipping
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index "planet_osm_nodes_pkey" for table "planet_osm_nodes"
+Setting up table: planet_osm_ways
+NOTICE: table "planet_osm_ways" does not exist, skipping
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index "planet_osm_ways_pkey" for table "planet_osm_ways"
+Setting up table: planet_osm_rels
+NOTICE: CREATE TABLE / PRIMARY KEY will create implicit index "planet_osm_rels_pkey" for table "planet_osm_rels"</pre>
+<p>Don’t be concerned by the NOTICE: entries above. All normal. Next, osm2pgsql will start reading the compressed planet file.</p>
+<pre>Reading in file: /home/user/planet/planet-latest.osm.bz2</pre>
+<p>As osm2pgsql reads the planet file it will give progress reports. The line below will refresh every few seconds and update the numbers in brackets. This part of the import takes a long time. Depending on your server, it will take between hours and days.</p>
+<pre>Processing: Node(10140k 200.1k/s) Way(0k 0.00k/s) Relation(0k 0.00/s)</pre>
+<p>As the import proceeds, first the Node number will increase untill they are all imported, then the Way number and finally the Relation number. The speed at which the import occurs depends strongly on the hardware available and if the node cache fits into ram. That said, if your node cache is big enough, you can probably expect the speed of nodes to be on the order of a few hundred k per second for nodes, a few 10s of k per second for ways and a few hundred per second for relations. If the node cache does not fit into ram or you have set the cache value to low, the process can be an order of magnitude slower. If you are importing the full planet, the import can take days. If you are only importing single countries, the time should be cut down to minutes or hours. Do not interrupt the import process unless you have decided to start over again from the beginning.</p>
+<pre>Processing: Node(593072k) Way(45376k) Relation(87k)
+Exception caught processing way id=110802
+Exception caught processing way id=110803
+Processing: Node(593072k) Way(45376k) Relation(474k)</pre>
+<p>The exceptions shown above are due to minor errors in the planet file. The planet import is still proceeding normally.</p>
+<p>The next stage of the osm2pgsql planet import process also will take between hours and days, depending on your hardware. It begins like this:</p>
+<pre>Node stats: total(593072533), max(696096737)
+Way stats: total(45376969), max(55410575)
+Relation stats: total(484528), max(555276)
+Going over pending ways
+processing way (752k)</pre>
+<p>The processing way number should update approximately each second.</p>
+<pre>Going over pending relations
+node cache: stored: 515463899(86.91%), storage efficiency: 96.01%, hit rate: 85.97%
+Committing transaction for planet_osm_roads
+Committing transaction for planet_osm_line
+Committing transaction for planet_osm_polygon
+Sorting data and creating indexes for planet_osm_line
+Sorting data and creating indexes for planet_osm_roads
+Sorting data and creating indexes for planet_osm_polygon
+Committing transaction for planet_osm_point
+Sorting data and creating indexes for planet_osm_point
+Stopping table: planet_osm_nodes
+Stopping table: planet_osm_ways
+Stopping table: planet_osm_rels
+Building index on table: planet_osm_rels
+Stopped table: planet_osm_nodes
+Building index on table: planet_osm_ways
+Stopped table: planet_osm_rels
+Completed planet_osm_point
+Completed planet_osm_roads
+Completed planet_osm_polygon
+Completed planet_osm_line
+Stopped table: planet_osm_ways
+
+Osm2pgsql took 86400s overall</pre>
+<p>The number of nodes, ways and relations processed will obviously differ by the size of the data extract you are using and the date of the data dump. The numbers shown here are not reflective of the full planet import, which is substantially larger.</p>
+<h3>Starting your tileserver</h3>
+<p>Now that everything is installed, set-up and loaded, you can start up your tileserver and hopefully everything is working.&nbsp; We’ll run it interctively first, just to make sure that everything’s working properly:</p>
+<pre>sudo mkdir /var/run/renderd
+sudo chown username /var/run/renderd
+renderd -f -c /usr/local/etc/renderd.conf</pre>
+<p>and on a different session:</p>
+<pre>sudo /etc/init.d/apache2 restart</pre>
+<p>If any FATAL errors occur you’ll need to double-check any edits that you made earlier.</p>
+<p>If not, try and browse to http://yourserveraddress/osm_tiles/0/0/0.png to see if a small picture of the world appears.</p>
+<p>If it does, you can stop the interactive renderd process and configure it to run automatically at machine startup as a daemon.</p>
+<pre>sudo cp&nbsp; ~/src/mod_tile/debian/renderd.init /etc/init.d/renderd
+sudo chmod u+x /etc/init.d/renderd</pre>
+<p>Edit the /etc/init.d/renderd file as root &ndash; you’ll need to make a couple of changes to the DAEMON and DAEMON_ARGS lines so that they read:</p>
+<pre>DAEMON=/usr/local/bin/$NAME
+DAEMON_ARGS="-c /usr/local/etc/renderd.conf"</pre>
+<p>Also, you’ll need to change references to www-data so that they match your username &ndash; change “www-data” to what you changed “username” to in other files.</p>
+<p>You should now be able to start mapnik by doing the following:</p>
+<pre>sudo /etc/init.d/renderd start</pre>
+<p>and stop it:</p>
+<pre>sudo /etc/init.d/renderd stop</pre>
+<p>Logging information is now written to /var/log/daemon.log instead of to the terminal.</p>
+<p>Next, add a link to the interactive startup directory so that it starts automatically:</p>
+<pre>sudo ln -s /etc/init.d/renderd /etc/rc2.d/S20renderd</pre>
+<p>and then restart your server, browse to http://yourserveraddress/osm_tiles/0/0/0.png and everything should be working! You can also go to the page http://yourserveraddress/mod_tile which should give you some stats about your tileserver.</p>
+<p>Next, you might want to have a look at something in the <a href="http://switch2osm.org/using-tiles/">using tiles</a> section to create a map that uses your new tile server.</p>
+<h2>Acknowledgements</h2>
+<p>With thanks to <a href="http://en.flossmanuals.net/openstreetmap/setting-up-your-own-tile-server/">Ian Dees</a> and <a href="http://weait.com/content/build-your-own-openstreetmap-server">Richard Weait</a></p>
+<p>p</p>
+
+							</div>
+		</div>
