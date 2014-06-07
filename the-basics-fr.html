@@ -1,37 +1,42 @@
 <div class="pages">
 <div class="title">
-<h1><a title="Les basiques" href="http://switch2osm.org/the-basics/">Les basiques</a></h1>
+<h1><a href="http://switch2osm.org/the-basics/" title="Les basiques">Les basiques</a></h1>
 </div>
 <div class="meta">&nbsp;</div>
 <div class="entry">
 <h2>Le challenge</h2>
-<p>Votre fournisseur de cartes actuel vous donne&nbsp; deux choses:</p>
+<p>Votre fournisseur de cartes actuel vous fournit&nbsp; deux choses:</p>
 <ul>
-<li>A set of &rsquo;tiles&rsquo; (square map images) that are placed together to make the map</li>
-<li>A JavaScript API, or equivalent library for mobile apps, to view them</li>
+    <li>Un jeu de &rsquo;tuiles&rsquo; (images de cartes carr&eacute;es) qui sont mises ensemble pour faire une carte</li>
+    <li>Une API JavaScript, ou une biblioth&egrave;que &eacute;quivalente pour les applications mobiles, pour les visualiser</li>
 </ul>
-<p>To switch to OpenStreetMap, you&rsquo;ll need to replace both of these.</p>
-<h2>The tiles</h2>
-<p><img class="alignright size-full wp-image-178" style="margin: 6px 16px;" title="tiles" src="http://switch2osm.org/wp-content/uploads/2012/01/tiles.png" alt="" width="200" height="131" /><br /> The map tiles, images of (usually) 256 x 256 pixels each, are drawn (&ldquo;rendered&rdquo;) from a map database.</p>
-<p>If you currently use Google Maps, you&rsquo;ll be using Google&rsquo;s map tiles, hosted at google.com. Because the OpenStreetMap Foundation is a non-profit organisation with limited resources, you can&rsquo;t just slot in the tiles from openstreetmap.org as a replacement (see the <a href="http://wiki.openstreetmap.org/wiki/Tile_usage_policy">Tile Usage Policy</a>). Instead, you can:</p>
+<p>Pour passer &agrave; OpenStreetMap, vous avez besoin de remplacer ces deux &eacute;l&eacute;ments.</p>
+<h2>Les tuiles</h2>
+<p><img width="200" height="131" alt="" src="http://switch2osm.org/wp-content/uploads/2012/01/tiles.png" title="tiles" style="margin: 6px 16px;" class="alignright size-full wp-image-178" /><br />
+Les tuiles de carte, des images (habituellement) de 256 x 256 pixels chacune, sont dessin&eacute;es (&ldquo;rendues&rdquo;) depuis une base de donn&eacute;es cartographique.</p>
+<p>Si vous utilisez actuellement Google Maps, vous utilisez alors des tuiles de cartes de Google, h&eacute;berg&eacute;es par google.com. Parce que la fondation OpenStreetMap est un organisation &agrave; but non lucratif avec des ressources limit&eacute;es, vous ne pouvez pas juste utiliser les tuiles provenant de openstreetmap.org comme un remplacement (voir la <a href="http://wiki.openstreetmap.org/wiki/FR:Tile_usage_policy">politique d'usage des tuiles</a>). A la place, vous pouvez:</p>
 <ul>
-<li>Generate your own tiles, by downloading the free OSM map database and rendering them;</li>
-<li>Or use a third-party supplier (some of whom charge, some are free)</li>
+    <li>g&eacute;n&eacute;rer vos propres tuile, en t&eacute;l&eacute;chargeant la base de donn&eacute;es de la carte OSM libre et en les g&eacute;n&eacute;rant;</li>
+    <li>Ou utiliser un fournisseur de tuiles tiers (certains facturent, certains sont gratuits)</li>
 </ul>
-<p>The OSM map database is called planet.osm. The full database and regular update files are both available at&nbsp;<a href="http://planet.openstreetmap.org/">planet.openstreetmap.org</a>.</p>
-<p>Rendering your own tiles gives you complete control over their appearance. You can customise the maps to appear any way you like. Alternatively, third-party suppliers have OSM expertise and may have ready-prepared map styles that you can use.</p>
-<h2>The API/library</h2>
-<p>There is no single canonical library: you can choose whichever suits your needs best. The two most popular JavaScript libraries for use with OSM tiles are:</p>
-<div style="clear: both;"><a href="http://openlayers.org/"><img class="alignnone size-full wp-image-140" style="float: left; margin: 5px;" title="Open Layers logo" src="http://switch2osm.org/wp-content/uploads/2012/01/openlayers-logo.png" alt="" width="207" height="38" border="0" /></a><br /> <a href="http://openlayers.org/">OpenLayers</a> &ndash; powerful and long-established</div>
-<div style="clear: both;"><a href="http://leaflet.cloudmade.com/"><img class="alignnone size-full wp-image-140" style="float: left; margin: 5px; margin-left: 15px; margin-right: 15px;" title="leaflet logo" src="http://switch2osm.org/wp-content/uploads/2012/01/leaflet-logo.png" alt="" width="187" height="65" border="0" /></a><br /> <a href="http://leaflet.cloudmade.com/">Leaflet</a> &ndash; lightweight and easy-to-learn</div>
+<p>la base de donn&eacute;es de la carte OSM est appel&eacute;e planet.osm. la base compl&egrave;te et les fichiers de mises &agrave; jour r&eacute;guli&egrave;res sont tous les deux disponibles sur <a href="http://planet.openstreetmap.org/">planet.openstreetmap.org</a>.</p>
+<p>Faire le rendu de vos propre tuiles donne un contr&ocirc;le complet sur leur apparence. Vous pouvez personnaliser les cartes pour qu'elles apparaissent de la mani&egrave;re dont vous aimez. Alternativement, des fournisseur de tuiles tiers ont une expertise OSM et peuvent avoir des styles de cartes d&eacute;j&agrave; pr&eacute;par&eacute;s que vous pouvez utiliser.</p>
+<h2>API/biblioth&egrave;ques</h2>
+<p>Il n'y a pas de biblioth&egrave;que canonique unique: vous pouvez choisir celle qui correspond le mieux &agrave; vos besoins. Les deux biblioth&egrave;ques JavaScript les plus populaires pour utiliser les tuiles OSM sont:</p>
+<div style="clear: both;"><a href="http://openlayers.org/"><img width="207" border="0" height="38" alt="" src="http://switch2osm.org/wp-content/uploads/2012/01/openlayers-logo.png" title="Open Layers logo" style="float: left; margin: 5px;" class="alignnone size-full wp-image-140" /></a><br />
+<a href="http://openlayers.org/">OpenLayers</a> &ndash; tr&egrave;s puissante et bien &eacute;tablie<br />
+</div>
+<div style="clear: both;"><a href="http://leaflet.cloudmade.com/"><img width="187" border="0" height="65" alt="" src="http://switch2osm.org/wp-content/uploads/2012/01/leaflet-logo.png" title="leaflet logo" style="float: left; margin: 5px; margin-left: 15px; margin-right: 15px;" class="alignnone size-full wp-image-140" /></a><br />
+<a href="http://leaflet.cloudmade.com/">Leaflet</a> &ndash; l&eacute;g&egrave;re et facile &agrave; apprendre</div>
 <div style="clear: both;">&nbsp;</div>
-<p>If you choose to use MapQuest Open tiles (made from OSM data), you can also use the <a href="http://developer.mapquest.com/web/products/open/sdk">MapQuest Open API</a>. APIs are also available for mobile platforms, such as <a href="https://github.com/route-me/route-me">Route-Me</a> (iOS) and <a href="http://code.google.com/p/osmdroid/">osmdroid</a> (Android).</p>
-<h2>The licence</h2>
-<p>Unlike commercial providers&rsquo; data, OpenStreetMap is &lsquo;open data&rsquo;. The map data is available to you free-of-charge, with the freedom to copy and modify.&nbsp;OSM&rsquo;s licence is the&nbsp;<a href="http://opendatacommons.org/licenses/odbl/summary/">Open Database Licence</a>.</p>
-<p>Your obligations are:</p>
+<p>Si vous choisissez d'utiliser les tuiles MapQuest Open (r&eacute;alis&eacute;es gr&acirc;ce au donn&eacute;es OSM), vous pouvez aussi utiliser <a href="http://developer.mapquest.com/web/products/open/sdk">l'API MapQuest Open</a>. Des APIs sont aussi disponibles pour les plates-formes mobiles, comme <a href="https://github.com/route-me/route-me">Route-Me</a> (iOS) et <a href="http://code.google.com/p/osmdroid/">osmdroid</a> (Android).</p>
+<h2>La licence</h2>
+<p>Contrairement aux donn&eacute;es de fournisseurs commerciaux, OpenStreetMap est &lsquo;open data&rsquo;, c'est&nbsp; &agrave; dire avec une licence de donn&eacute;es ouverte. La donn&eacute;e cartographique est disponible sans co&ucirc;t, avec la libert&eacute; de copier et modifier. La licence OSM est la licence <a href="http://opendatacommons.org/licenses/odbl/summary/">Open Database Licence</a> (ODbL). <br />
+</p>
+<p>Vos obligations sont:</p>
 <ul>
-<li>Attribution. You must credit OpenStreetMap with the same prominence that would be expected if you were using a commercial provider. See <a href="http://www.openstreetmap.org/copyright">OSM&rsquo;s copyright guidelines</a>.</li>
-<li>Share-Alike.&nbsp;When you use any adapted version of OSM&rsquo;s map data, or works produced it, you must also offer that adapted database under the ODbL.</li>
+    <li>l'attribution. Vous devez cr&eacute;diter OpenStreetMap avec la m&ecirc;me importance attendue de celle si vous utilisiez un fournisseur commercial. Voir <a href="http://www.openstreetmap.org/copyright">les lignes d'utilisaton du copyright OSM</a>.</li>
+    <li>partageable &agrave; l'identique. Quand vous utilisez n'importe quelle version adapt&eacute;e des donn&eacute;es de la carte OSM, ou des travaux qui en produisent &agrave; partir d'OSM en plus, vous devez aussi offrir cette base de donn&eacute;es adapt&eacute;e sous licence ODbL.</li>
 </ul>
 <p>&nbsp;</p>
 </div>
