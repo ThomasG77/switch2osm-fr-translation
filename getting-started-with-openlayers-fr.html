@@ -1,0 +1,70 @@
+<div class="pages">
+<div class="title">
+<h1><a href="http://switch2osm.org/using-tiles/getting-started-with-openlayers/" title="Débuter avec OpenLayers">D&eacute;buter avec OpenLayers</a></h1>
+</div>
+
+<div class="meta">&nbsp;</div>
+
+<div class="entry">
+<p><img alt="" class="alignright size-full wp-image-151" height="57" src="http://switch2osm.org/wp-content/uploads/2012/01/openlayers-logo-big.png" style="margin: 10px;" title="openlayers-logo-big" width="315" />OpenLayers a &eacute;t&eacute; pendant longtemps le choix standard par d&eacute;faut pour encapsuler une vue OpenStreetMap navigable dans une page web. C&#39;est une biblioth&egrave;que mature et compl&egrave;te (un peu plus de 400k de JavaScript minifi&eacute;). Elle a une courbe d&#39;apprentissage mod&eacute;r&eacute;e mais est capable de nombreuses applications au del&agrave; d&#39;une simple &ldquo;carte glissante&rdquo;: ces fonctionnalit&eacute;s incluent un support des projections complet, le dessin vectoriel, les aper&ccedil;us de cartes, et bien plus.</p>
+
+<p>Sur cette page, nous expliquons comment cr&eacute;er une carte encapsulable tr&egrave;s simple, mais il y a beaucoup plus <a href="http://openlayers.org/dev/examples/">d&#39;exemples sur OpenLayers.org</a> montrant les capacit&eacute;s compl&egrave;tes du logiciel.</p>
+
+<h2>Une carte encapsul&eacute;e simple</h2>
+
+<p>Copiez ce qui suit dans un nouveau fichier HTML pour commencer &agrave; utiliser OpenLayers</p>
+
+<pre>
+&lt;!DOCTYPE HTML&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;OpenLayers Basic Example&lt;/title&gt;
+
+    &lt;script src=&quot;http://www.openlayers.org/api/OpenLayers.js&quot;&gt;&lt;/script&gt;
+    &lt;script&gt;
+      function init() {
+        map = new OpenLayers.Map(&quot;mapdiv&quot;);
+        var mapnik = new OpenLayers.Layer.OSM();
+        map.addLayer(mapnik);
+
+        var lonlat = new OpenLayers.LonLat(-1.788, 53.571).transform(
+            new OpenLayers.Projection(&quot;EPSG:4326&quot;), // transform from WGS 1984
+            new OpenLayers.Projection(&quot;EPSG:900913&quot;) // to Spherical Mercator
+          );
+
+        var zoom = 13;
+
+        var markers = new OpenLayers.Layer.Markers( &quot;Markers&quot; );
+        map.addLayer(markers);
+        markers.addMarker(new OpenLayers.Marker(lonlat));
+
+        map.setCenter(lonlat, zoom);
+      }
+    &lt;/script&gt;
+
+    &lt;style&gt;
+    #mapdiv { width:350px; height:250px; }
+    div.olControlAttribution { bottom:3px; }
+    &lt;/style&gt;
+
+&lt;/head&gt;
+
+&lt;body onload=&quot;init();&quot;&gt;
+    &lt;p&gt;My HTML page with an embedded map&lt;/p&gt;
+    &lt;div id=&quot;mapdiv&quot;&gt;&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+<p>Cet exemple montre comment initialiser un objet map qui apparaitra dans une div sur votre page HTML. Un objet LonLat est cr&eacute;&eacute; pour repr&eacute;senter le point au centre de la carte. Essayez de jouer avec les valeurs de latitude et longitude. Un appel &agrave; &lsquo;transform&rsquo; permet de g&eacute;rer les projections, et nous utilisons le m&ecirc;me emplacement pour positionner un marqueur.</p>
+
+<h2>T&eacute;l&eacute;charger OpenLayers</h2>
+
+<p>L&#39;exemple ci-dessus montre aussi comment, avec une balise script, vous pouvez r&eacute;f&eacute;rencer le fichier JavaScript OpenLayers h&eacute;berg&eacute; de mani&egrave;re distante sur openlayers.org . Il y a de nombreux avantages et d&eacute;savantages &agrave; cette approche. L&#39;alternative est de t&eacute;l&eacute;charger OpenLayers et de l&#39;h&eacute;berger vous m&ecirc;me &agrave; c&ocirc;t&eacute; de votre HTML.</p>
+
+<p>Vous pouvez t&eacute;l&eacute;charger un fichier zip depuis <a href="http://openlayers.org">openlayers.org</a> qui contient de nombreux fichiers, dont seuls certains sont n&eacute;cessaires. En fait, vous risquez d&#39;utiliser seulement le fichier unique OpenLayers.js r&eacute;sultant du JavaScript compact&eacute;.</p>
+
+<p>Les r&eacute;pertoires &lsquo;theme&rsquo; et &lsquo;image&rsquo; sont aussi n&eacute;cessaires si vous souhaitez autoh&eacute;berger toutes les ressources requises. Vous pouvez configurer les aspects visuels de OpenLayers en utilisant ces fichiers. Le r&eacute;pertoire &lsquo;lib&rsquo; a les sources JavaScript avant qu&#39;ils ne soient compact&eacute;s en un seul fichier, mais vous pouvez aussi faire fonctionner OpenLayers en mode &lsquo;multi-fichiers&rsquo; depuis ceux-l&agrave;. Cela peut &ecirc;tre une bonne id&eacute;e quand vous d&eacute;veloppez avec l&#39;API OpenLayers, comme les erreurs report&eacute;es dans le navigateur vous renvoient aux num&eacute;ros de ligne montrant des choses ayant plus de significations.</p>
+
+<p>Si vous choisissez de travailler avec OpenLayers, la biblioth&egrave;que est enti&egrave;rement open-source (sous une licence BSD modifi&eacute;e) et peut &ecirc;tre utilis&eacute;e gratuitement pour vos projets et produits commerciaux.</p>
+</div>
+</div>
