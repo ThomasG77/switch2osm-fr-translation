@@ -1,0 +1,205 @@
+<div class="pages">
+<div class="title">
+<h1><a href="http://switch2osm.org/using-tiles/getting-started-with-leaflet/" title="Débuter avec Leaflet">D&eacute;buter avec Leaflet</a></h1>
+</div>
+
+<div class="meta">&nbsp;</div>
+
+<div class="entry">
+<p><img alt="" class="alignright size-full wp-image-140" height="65" src="http://switch2osm.org/wp-content/uploads/2012/01/leaflet-logo.png" title="leaflet-logo" width="187" />Leaflet est une nouvelle biblioth&egrave;que JavaScript&nbsp; pour encapsuler des cartes qui est en train de gagner une forte popularit&eacute;. Plus simple et plus l&eacute;g&egrave;re que OpenLayers, c&#39;est un bon choix pour ceux qui ont&nbsp; des besoins d&#39;encapsulation assez standards.</p>
+
+<p>Sur cette page, nous expliquons comment cr&eacute;er une simple carte encapsul&eacute;e avec des marqueurs utilisant Leaflet, comme le montre une des r&eacute;centes compagnies de gestion de propri&eacute;t&eacute;s&nbsp;<a href="http://www.plotbrowser.com/?map">PlotBrowser.com</a> &eacute;tant pass&eacute;e &agrave; OpenStreetMap.</p>
+
+<h2>T&eacute;l&eacute;chargement Leaflet</h2>
+
+<p>Vous pouvez t&eacute;l&eacute;charger Leaflet depuis son propre site sur <a href="http://leafletjs.com/">leafletjs.com</a>. La source est disponible comme un .zip, ou vous pouvez <a href="https://github.com/Leaflet/Leaflet">le forker sur GitHub</a>.</p>
+
+<p>Leaflet utilise une licence&nbsp;open-source BSD permissive donc qui peut &ecirc;tre facilement int&eacute;gr&eacute;e dans n&#39;importe quel site sans soucis juridiques.</p>
+
+<p>Copiez le r&eacute;pertoire <code>dist/</code> &agrave; l&#39;emplacement sur votre serveur web d&#39;o&ugrave; la page encapsul&eacute;e sera servie, et renommez-le en <code>leaflet/</code> .</p>
+
+<h2>Encapsuler Leaflet dans votre page</h2>
+
+<p>Pour la facilit&eacute; d&#39;utilisation, nous allons cr&eacute;er un fichier .js avec tout notre code de carte dedans. Vous pouvez bien s&ucirc;r mettre ceci en ligne dans la page principale si vous aimez. Cr&eacute;ez cette page dans votre r&eacute;pertoire <code>leaflet/</code> et appelez-la <code>leafletembed.js</code>.</p>
+
+<p>Utilisez le code suivant dans leaflet_embed.js:</p>
+
+<pre>
+var map;
+var ajaxRequest;
+var plotlist;
+var plotlayers=[];
+
+function initmap() {
+    // set up the map
+    map = new L.Map(&#39;map&#39;);
+
+    // create the tile layer with correct attribution
+    var osmUrl=&#39;http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png&#39;;
+    var osmAttrib=&#39;Map data &copy; &lt;a href=&quot;http://openstreetmap.org&quot;&gt;OpenStreetMap&lt;/a&gt; contributors&#39;;
+    var osm = new L.TileLayer(osmUrl, {minZoom: 8, maxZoom: 12, attribution: osmAttrib});
+
+    // start the map in South-East England
+    map.setView(new L.LatLng(51.3, 0.7),9);
+    map.addLayer(osm);
+}</pre>
+
+<p>Then include it in your embedding page like this:</p>
+
+<pre>
+&lt;link rel=&quot;stylesheet&quot; type=&quot;text/css&quot; href=&quot;leaflet/leaflet.css&quot; /&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;leaflet/leaflet.js&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot; src=&quot;leaflet/leafletembed.js&quot;&gt;&lt;/script&gt;</pre>
+
+<p>Ajoutez une div avec une taille appropri&eacute;e appel&eacute;e &lsquo;<code>map</code>&lsquo; avec une page encapsul&eacute;e; ensuite, finalement, ajoutez un peu de JavaScript &agrave; votre page encapsul&eacute;e pour initialiser la carte, soit &agrave; la fin de la page ou dans un &eacute;v&eacute;nement <code>onload</code>:</p>
+
+<pre>
+initmap();</pre>
+
+<p>F&eacute;licitations; vous avez encapsul&eacute; votre premi&egrave;re carte avec Leaflet.</p>
+
+<h2>Montrer les marqueurs au fur et &agrave; mesure que vous d&eacute;placer la carte</h2>
+
+<p>Il y a d&#39;excellents <a href="http://leaflet.cloudmade.com/examples.html">exemples sur le site web Leaflet</a>. Ici, nous allons montrer un cas courant suppl&eacute;mentaire: montrer des marqueurs cliquables sur la carte et o&ugrave; les emplacements des marqueurs sont recharg&eacute;s depuis le serveur lorsque l&#39;utilisateur se d&eacute;place sur la carte.</p>
+
+<p>En premier, nous ajouterons le code AJAX standard du m&ecirc;me type que vous devriez avoir d&eacute;j&agrave; vu un millier de fois avant. En haut de la fonction <code>initmap</code> dans le fichier&nbsp; <code>leafletembed.js</code>, ajoutez :</p>
+
+<pre>
+// set up AJAX request
+ajaxRequest=getXmlHttpObject();
+if (ajaxRequest==null) {
+    alert (&quot;This browser does not support HTTP Request&quot;);
+    return;
+}</pre>
+
+<p>Ensuite, ajoutez cette nouvelle fonction quelque part dans <code>leafletembed.js</code>:</p>
+
+<pre>
+function GetXmlHttpObject() {
+    if (window.XMLHttpRequest) { return new XMLHttpRequest(); }
+    if (window.ActiveXObject)  { return new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;); }
+    return null;
+}</pre>
+
+<p>Apr&egrave;s, nous allons ajouter une fonction pour interroger la liste de marqueurs (en JSON) pour l&#39;&eacute;tendue couverte par la carte courante:</p>
+
+<pre>
+function askForPlots() {
+    // request the marker info with AJAX for the current bounds
+    var bounds=map.getBounds();
+    var minll=bounds.getSouthWest();
+    var maxll=bounds.getNorthEast();
+    var msg=&#39;leaflet/findbybbox.cgi?format=leaflet&amp;bbox=&#39;+minll.lng+&#39;,&#39;+minll.lat+&#39;,&#39;+maxll.lng+&#39;,&#39;+maxll.lat;
+    ajaxRequest.onreadystatechange = stateChanged;
+    ajaxRequest.open(&#39;GET&#39;, msg, true);
+    ajaxRequest.send(null);
+}</pre>
+
+<p>Cela parle &agrave; un script c&ocirc;t&eacute; serveur qui retourne simplement un array JSON des propri&eacute;t&eacute;s que nous souhaitons afficher sur la carte, comme ceci:</p>
+
+<pre>
+[{&quot;name&quot;:&quot;Tunbridge Wells, Langton Road, Burnt Cottage&quot;,
+  &quot;lon&quot;:&quot;0.213102&quot;,
+  &quot;lat&quot;:&quot;51.1429&quot;,
+  &quot;details&quot;:&quot;A Grade II listed five bedroom wing in need of renovation.&quot;}</pre>
+
+<p>(etc.)</p>
+
+<p>Quand cela arrive, nous effa&ccedil;ons les marqueurs existants et affichons les nouveaux, en cr&eacute;ant une fen&ecirc;tre pop-up rudimentaire pour chacun d&#39;eux:</p>
+
+<pre>
+function stateChanged() {
+    // if AJAX returned a list of markers, add them to the map
+    if (ajaxRequest.readyState==4) {
+        //use the info here that was returned
+        if (ajaxRequest.status==200) {
+            plotlist=eval(&quot;(&quot; + ajaxRequest.responseText + &quot;)&quot;);
+            removeMarkers();
+            for (i=0;i&lt;plotlist.length;i++) {
+                var plotll = new L.LatLng(plotlist[i].lat,plotlist[i].lon, true);
+                var plotmark = new L.Marker(plotll);
+                plotmark.data=plotlist[i];
+                map.addLayer(plotmark);
+                plotmark.bindPopup(&quot;&lt;h3&gt;&quot;+plotlist[i].name+&quot;&lt;/h3&gt;&quot;+plotlist[i].details);
+                plotlayers.push(plotmark);
+            }
+        }
+    }
+}
+
+function removeMarkers() {
+    for (i=0;i&lt;plotlayers.length;i++) {
+        map.removeLayer(plotlayers[i]);
+    }
+    plotlayers=[];
+}</pre>
+
+<p>Enfin, lions ceci avec le reste de votre script. Apr&egrave;s que nous ayions ajout&eacute; la carte dans <code>initmap</code>, nous allons interroger une premi&egrave;re s&eacute;rie de marqueurs, et mettez en place un &eacute;v&eacute;nement pour faire ceci chaque fois que la carte est d&eacute;plac&eacute;e. Ajoutez ceci juste &agrave; la fin de <code>initmap</code>:</p>
+
+<pre>
+   askForPlots();
+    map.on(&#39;moveend&#39;, onMapMove);
+}
+
+// Ensuite, ajoutez ceci comme une nouvelle fonction...
+function onMapMove(e) { askForPlots(); }</pre>
+
+<p><!-- That's it. You can see <a href="http://www.plotbrowser.com/?map">the finished result on PlotBrowser.com</a>. &#8211;></p>
+
+                            </div>
+        </div>
+
+
+
+    </div>
+
+
+    <div id="sidebar">
+        <div id="icl_lang_sel_widget" class="widget icl_languages_selector"><div id="lang_sel"  >
+    <ul>
+        <li><a href="#" class="lang_sel_sel icl-en">
+
+            <img  class="iclflag" src="http://switch2osm.org/wp-content/plugins/sitepress-multilingual-cms/res/flags/en.png" alt="en"  title="English" />
+            &nbsp;<span  class="icl_lang_sel_current">English</span></a>                    </li>
+    </ul>
+</div>
+</div><div id="search-2" class="widget widget_search"><h4 class="widgettitle">Search</h4>           <form method="get" id="sidebarsearch" action="http://switch2osm.org" >
+                <label class="hidden" for="s">Search:</label>
+                <div>
+                    <input type="text" value="" name="s" id="s" />
+                    <input type="submit" id="searchsubmit" value="Search" />
+                </div>
+            </form>
+</div><div id="nav_menu-3" class="widget widget_nav_menu"><h4 class="widgettitle">Links</h4><div class="menu-links-container"><ul id="menu-links" class="menu"><li id="menu-item-253" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-253"><a href="http://www.openstreetmap.org/">OpenStreetMap</a></li>
+<li id="menu-item-254" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-254"><a href="http://planet.openstreetmap.org/">OSM data download (planet.osm)</a></li>
+<li id="menu-item-255" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-255"><a href="http://www.osmfoundation.org/">OSM Foundation</a></li>
+</ul></div></div>   </div>
+
+
+    </div>
+        <div id="footer">
+            <div class="left">&copy; 2013 OpenStreetMap and contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>.</div>
+            <div class="right"><a href="http://picomol.de/picolight/" rel="nofollow">Design by picomol</a>. Powered by <a href="http://www.wordpress.org">WordPress</a>.
+        </div>
+    </div>
+</div>
+        <script type='text/javascript' src='http://switch2osm.org/wp-includes/js/comment-reply.min.js?ver=3.9'></script>
+<script type='text/javascript'>
+/* <![CDATA[ */
+var icl_vars = {"current_language":"en","icl_home":"http:\/\/switch2osm.org\/"};
+/* ]]> */
+</script>
+<script type='text/javascript' src='http://switch2osm.org/wp-content/plugins/sitepress-multilingual-cms/res/js/sitepress.js?ver=3.9'></script>
+
+<!-- Piwik --><script type="text/javascript">
+var pkBaseURL = (("https:" == document.location.protocol) ? "https://piwik.openstreetmap.org/" : "http://piwik.openstreetmap.org/");
+document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+</script><script type="text/javascript">
+try {
+var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 2);
+piwikTracker.trackPageView();
+piwikTracker.enableLinkTracking();
+} catch( err ) {}
+</script><noscript>&lt;p&gt;&lt;img src="http://piwik.openstreetmap.org/piwik.php?idsite=2" style="border:0" alt="" /&gt;&lt;/p&gt;</noscript><!-- End Piwik Tracking Code --></p>
+</div>
+</div>
