@@ -1,0 +1,156 @@
+<div class="pages">
+			<div class="title">
+				<h1><a title="Loading OSM data" href="http://switch2osm.org/loading-osm-data/">Loading OSM data</a></h1>
+			</div>
+			<div class="meta">
+							</div>
+
+			<div class="entry">
+				<p>This guide describes how to install, set-up and configure all the necessary software to have a database of OpenStreetMap data which you can use to render maps or develop stylesheets. The step-by-step instructions are written for <a href="http://www.ubuntu.com/">Ubuntu Linux</a> 14.04 LTS (Trusty Tahr), but have notes on adaptations needed for Ubuntu 12.04 LTS (Precise Pangolin). They should transfer without much difficulty to other distributions. Basic Linux command line and PostgreSQL knowledge is required. The machine used for the database can either be a desktop machine or a machine you have remote access to.</p>
+<h1>Software Installation</h1>
+<p>This guide covers installation of osm2pgsql and loading a PostgreSQL/PostGIS database with OpenStreetMap data. Before starting, make sure your Ubuntu system is fully up-to-date:</p>
+<pre>sudo apt-get update
+sudo apt-get -y upgrade</pre>
+<h2>Core software</h2>
+<p>Before continuing, we need some essential software. This will allow us to download other software</p>
+<pre>sudo apt-get --no-install-recommends -y install git unzip curl \
+&nbsp;&nbsp;&nbsp;&nbsp;build-essential software-properties-common</pre>
+<p><em>On Ubuntu 12.04 use the <tt>python-software-properties</tt> package instead of <tt>software-properties-common</tt></em></p>
+<h2>PostgreSQL + PostGIS</h2>
+<p>PostgreSQL is a relational database, and PostGIS “spatially enables” it, which allow you to store map data in it. PostgreSQL + PostGIS are used for a wide variety of uses such as rendering maps, geocoding, and analysis. It serves a similar function to ESRI’s SDE or Oracle’s Spatial extension. A minimum of PostgreSQL 9.1 and PostGIS 2.0 is required with this guide. It is possible to use PostgreSQL 8.4 and PostGIS 1.5, but it is <strong>strongly</strong> not recommended as it is substantially slower and harder to set up, requiring significant changes to the guide. <em>On Ubuntu 12.04 you will want to use PostgreSQL from the <a href="https://wiki.postgresql.org/wiki/Apt">PGDG APT repository</a>.</em></p>
+<pre>sudo apt-get --no-install-recommends install -y postgresql-9.3-postgis-2.1 \
+    postgresql-contrib-9.3 proj-bin libgeos-dev</pre>
+<h2>Assorted software</h2>
+<p>We’re going to need some assorted software for the upcoming steps, and for monitoring performance. None of this is essential for loading and updating OpenStreetMap data, but it is very hard to monitor your server and debug any problems without diagnostic software. We will use Munin to monitor and record system information. This allows comparison of the current state of the server with its past, allowing you to observe changes. You can see an example of the information available for <a href="http://munin.openstreetmap.org/openstreetmap/orm.openstreetmap/index.html">orm.openstreetmap.org</a>, one of the rendering servers serving the Standard layer for OpenStreetMap.org.</p>
+<pre>sudo apt-get --no-install-recommends install -y apache2 \
+&nbsp;&nbsp;&nbsp;&nbsp;munin munin-node munin-plugins-extra libdbd-pg-perl \
+&nbsp;&nbsp;&nbsp;&nbsp;sysstat iotop ptop</pre>
+<p>By default the Munin graphs are only accessible from the machine they are run on, but if you are using a remote server you will have to make them accessible to you. They are also useful if you are asking someone else for help with your server, as it allows them to see how it is running.</p>
+<pre>sudo sed -i "s|Allow from.*|Allow from all|" /etc/munin/apache.conf
+sudo service apache2 reload</pre>
+<h2>OpenStreetMap-specific software</h2>
+<p>Lastly, we need the OpenStreetMap specific software. Osm2pgsql is the software used to load the OSM data into the Postgres database, while osmctools contains osmconvert, osmupdate, and osmfilter, a trio of useful programs for working with downloaded OSM data. If you are not using Ubuntu you can compile <a href="https://github.com/openstreetmap/osm2pgsql">osm2pgsql from source</a>&nbsp;and&nbsp;instructions for <a href="http://wiki.openstreetmap.org/wiki/Osmconvert">osmconvert</a>, <a href="http://wiki.openstreetmap.org/wiki/Osmupdate">osmupdate</a>, and <a href="http://wiki.openstreetmap.org/wiki/Osmfilter">osmfilter</a>&nbsp;can be found on the Wiki.</p>
+<pre>sudo add-apt-repository -y ppa:kakrueger/openstreetmap
+sudo apt-get update
+sudo apt-get --no-install-recommends install -y osm2pgsql osmctools</pre>
+<h1>Checking versions</h1>
+<p>Before continuing you should check that you have the expected versions of all the software, by typing the commands in black. Check that the response (shown here in orange) indicates you have <em>at least</em> these versions. If you do not, something has gone wrong and that needs to be fixed before continuing.</p>
+<pre><span style="color: #ff9900;">$ </span>proj
+<span style="color: #008000;"><span style="color: #ff9900;">Rel. 4.8.0, 6 March 2012
+usage: proj [ -beEfiIlormsStTvVwW [args] ] [ +opts[=arg] ] [ files ]
+$</span></span> psql --version
+<span style="color: #ff9900;">psql (PostgreSQL) 9.3.4
+$</span> grep 'default_version' '/usr/share/postgresql/9.3/extension/postgis.control'
+<span style="color: #ff9900;">default_version = '2.1.2'
+$</span> geos-config --version
+<span style="color: #ff9900;">3.4.2
+$</span> osm2pgsql --version
+<span style="color: #ff9900;">osm2pgsql SVN version 0.85.0 (64bit id space)
+$</span> osmconvert -h | head -n2
+<span style="color: #ff9900;">osmconvert 0.7T  Parameter Overview</span></pre>
+<h1>Getting ready to load</h1>
+<p>osm2pgsql uses overcommit like many scientific and large data applications, which requires adjusting a kernel setting to allow the data import to work successfully with multiple processes. Changing overcommit is also recommended for renderd and postgresql.</p>
+<pre>sudo tee /etc/sysctl.d/60-overcommit.conf &lt;&lt;EOF
+# Overcommit settings to allow faster osm2pgsql imports
+vm.overcommit_memory=1
+EOF
+sudo sysctl -p /etc/sysctl.d/60-overcommit.conf
+</pre>
+<p>To just change overcommit temporarily you can use <tt>sudo sysctl -w vm.overcommit_memory=1</tt> instead.</p>
+<h2>Creating a database</h2>
+<p>We need to create a database to store the OpenStreetMap data in. For traditional reasons this database is named “gis”. We also need to enable the PostGIS and hstore extensions on the database.</p>
+<pre>sudo -u postgres createuser -s $USER
+createdb gis
+psql -d gis -c 'CREATE EXTENSION hstore; CREATE EXTENSION postgis;'</pre>
+<p><em>Make sure to create the user from the postgres user, not from root.</em><br>
+We also want to monitor the new database for size and other useful statistics</p>
+<pre>sudo munin-node-configure --sh | sudo sh
+sudo service munin-node restart</pre>
+<h3>Tuning</h3>
+<p>The default PostgreSQL settings aren’t great for very large databases like OSM databases. Proper tuning can just about double the performance you’re getting. The most important PostgreSQL settings to change are <tt>maintenance_work_mem</tt> and <tt>work_mem</tt>, both which should be increased for faster data loading and faster queries while rendering respectively. Conservative settings for a 2GB VM are <tt>work_mem=16MB</tt> and <tt>maintenance_work_mem=128MB</tt>. On a machine with enough memory you could set them as high as <tt>work_mem=128MB</tt> and <tt>maintenance_work_mem=1GB</tt>. An overview to tuning Postgres can be found <a href="http://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server">on the PostgreSQL Wiki</a>, but adjusting <tt>maintenance_work_mem</tt> and <tt>work_mem</tt> are probably enough on a development or testing machine.</p>
+<p>Entire <a href="http://www.packtpub.com/postgresql-90-high-performance/book">books</a> have been written about Postgres tuning, but the two main osm2pgsql specific references are two presentations by <a href="http://www.remote.org/frederik/tmp/ramm-osm2pgsql-sotm-2012.pdf">Frederik Ramm of Geofabrik</a> and <a href="http://stateofthemap.us/session/osm2pgsql-mapnik-optimizing-the-rendering-toolchain/">Paul Norman</a>.</p>
+<h2>Stylesheet</h2>
+<p>The stylesheet you’re using should come with a .style file which indicates what tags osm2pgsql needs to import into the database. Here we’re using openstreetmap-carto, the default style on openstreetmap.org. Because we’re going to download a few different pieces of OSM software or data, we’re going to make an <tt>osm</tt> directory in our home directory to stay organized.</p>
+<pre>mkdir -p ~/osm
+cd ~/osm
+git clone https://github.com/gravitystorm/openstreetmap-carto.git</pre>
+<h1>Loading the data: two ways</h1>
+<p>The complete set of OSM data is very large. If you are testing or only want to serve tiles in a small part of the world you should use an <em>extract</em> which is only part of the OSM data. These are less demanding on hardware and loading the data into the database is much faster. If you want the entire planet or a large area like Europe, you want to load the data differently. The most popular source of extracts is Geofabrik, which makes extracts available by country or state. Other sources include <a href="http://mapzen.com/metro-extracts/">Metro Extracts</a> from Mapzen and extracts provided by local chapters. A more complete list of alternative source can be found on the <a href="http://wiki.openstreetmap.org/wiki/Planet.osm">Planet.osm wiki page</a>. It is also possible to create your own extracts with tools like <a href="http://wiki.openstreetmap.org/wiki/Osmconvert">osmconvert</a> or <a href="http://wiki.openstreetmap.org/wiki/Osmosis">Osmosis</a>.</p>
+<h2>Loading an extract</h2>
+<p>This assumes that you are</p>
+<ul>
+<li>Importing a PBF file 300 MB or under, for example small country like&nbsp;<a href="http://download.geofabrik.de/europe/switzerland.html">Switzerland</a>; a US state like&nbsp;<a href="http://download.geofabrik.de/north-america/us/texas.html">Texas</a>&nbsp;or&nbsp;<a href="http://download.geofabrik.de/north-america/us/florida.html">Florida</a>&nbsp;but not&nbsp;<a href="http://download.geofabrik.de/north-america/us/california.html">California</a>; or a larger but less densely mapped country like&nbsp;<a href="http://download.geofabrik.de/south-america/brazil.html">Brazil</a></li>
+<li>On a virtual machine with at least 2GB RAM and 8GB free disk space</li>
+</ul>
+<h3>Getting the data</h3>
+<p>There are a&nbsp;<a href="https://wiki.openstreetmap.org/wiki/Planet.osm#Country_and_area_extracts">number of providers of extracts</a>.&nbsp;<a href="http://download.geofabrik.de/">Geofabrik</a> provides extracts of many countries and states. We first want to download the data and run md5sum to check that the download was not corrupted. For this example we’re going to use the data for Liechtenstein, a small European country. Because it is very small, the&nbsp;Liechtenstein extract is often used for testing.</p>
+<pre>cd ~/osm
+wget http://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf.md5
+wget http://download.geofabrik.de/europe/liechtenstein-latest.osm.pbf
+md5sum -c liechtenstein-latest.osm.pbf.md5</pre>
+<h3>Loading with osm2pgsql</h3>
+<p>An osm2pgsql command line can be <b>very</b> complicated. There are lots of options and how they interact isn’t obvious. To help explain it, we’re going to break it down into parts. The command line we’re going to use is</p>
+<pre>osm2pgsql --create --slim \
+    --cache 1000 --number-processes 2 --hstore \
+    --style ~/osm/openstreetmap-carto/openstreetmap-carto.style --multi-geometry \
+    ~/osm/liechtenstein-latest.osm.pbf</pre>
+<p>There are a few parts to this</p>
+<ul>
+<li><tt>--create</tt> tells osm2pgsql to create new tables rather than appending to existing tables. Creating new tables is the default.</li>
+<li><tt>--slim</tt> tells osm2pgsql to create “slim” tables to store data while importing rather than trying to store everything in memory. <tt>--slim</tt> is also necessary if we want to update the data</li>
+<li><tt>--cache 1000</tt> causes 1000 MB of memory to be allocated as a cache for node positions. Having the node positions cached means that there are fewer reads from the database and constructing way geometries is much faster</li>
+<li><tt>--number-processes 2</tt> causes 2 CPU cores to be used. This should be adjusted to the number of threads the CPU supports, but there are minimal gains past 8 CPU threads.</li>
+<li><tt>--style ~/osm/openstreetmap-carto/openstreetmap-carto.style</tt> gives the path to the .style file which tells osm2pgsql what columns to create</li>
+<li><tt>--hstore</tt> causes tags not in the .style file to be stored in a special “hstore” column. Hstore is a key-value store that supports arbitrary keys and values. Having other tags in hstore allows changes later on, like rendering names in a specific language and overall makes the database more flexible, giving you greater freedom to render interesting data on maps you create. There is a <a href="http://www.paulnorman.ca/blog/2014/03/osm2pgsql-and-hstore/">very minor speed and 10% database size penalty</a> to having hstore.</li>
+<li><tt>--multi-geometry</tt> tells osm2pgsql not to break MULTIPOLYGONs into separate polygons. This increases <a href="http://www.paulnorman.ca/blog/2014/03/osm2pgsql-multipolygons/">flexibility and eliminates some rendering artifacts</a>, but is slightly slower.</li>
+<li><tt>~/osm/liechtenstein-latest.osm.pbf</tt> is the path to the OSM data to load</li>
+</ul>
+<p>How long osm2pgsql takes to load the data will depend on the extract size and hardware, primarily random access disk speed. It can take anywhere from seconds for&nbsp;<span style="color: #3b3a3c;">Liechtenstein to about an hour for a larger extract on slow hardware.</span></p>
+<h2>Loading the full planet</h2>
+<p>This assumes that you are</p>
+<ul>
+<li>Importing a PBF file 6GB or over, for example <a href="http://planet.openstreetmap.org/pbf/">the full planet</a> or a large region with lots of data like <a href="http://download.geofabrik.de/north-america.html">North America</a> or <a href="http://download.geofabrik.de/europe.html">Europe</a>.</li>
+<li>On a machine with at least 16GB RAM and 400GB free disk space, ideally with SSDs, 24GB of RAM and not a lower-end virtual machine.</li>
+</ul>
+<p><strong><em>Double-check flat-nodes for NA</em> </strong></p>
+<p>Before loading the full planet you should first check that your setup is correctly working by importing an extract, as described above. The osm2pgsql command line given below will remove the existing data when you are ready to import the planet.</p>
+<h3>Getting the data</h3>
+<p><a href="http://planet.openstreetmap.org/pbf/">Planet.openstreetmap.org</a> provides weekly planet dumps of the entire database. We first want to download the data and run md5sum to check that the download was not corrupted.</p>
+<pre>mkdir -p ~/osm
+cd ~/osm
+wget http://planet.openstreetmap.org/pbf/planet-latest.osm.pbf.md5
+wget http://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
+md5sum -c planet-latest.osm.pbf.md5</pre>
+<p>Because the planet dump could be up to a week old, we’re going to update it before importing. This is only necessary with the planet dump, not large extracts, and generally takes 30-60 minutes.</p>
+<pre>osmupdate planet-latest.osm.pbf new_planet-latest.osm.pbf</pre>
+<h3>Loading with osm2pgsql</h3>
+<p>An osm2pgsql command line can be <b>very</b> complicated. There are lots of options and how they interact isn’t obvious. To help explain it, we’re going to break it down into parts. The command line we’re going to use is</p>
+<pre>osm2pgsql --create --slim \
+    --flat-nodes ~/osm/flat_nodes.bin \
+    -C 14000 --number-processes 4 --hstore \
+    --style ~/osm/openstreetmap-carto/openstreetmap-carto.style --multi-geometry \
+    ~/osm/new_planet-latest.osm.pbf</pre>
+<p>There are a few parts to this</p>
+<ul>
+<li><tt>--create</tt> tells osm2pgsql to create new tables rather than appending to existing tables. Creating new tables is the default.</li>
+<li><tt>--slim</tt> tells osm2pgsql to create “slim” tables to store data while importing rather than trying to store everything in memory. <tt>--slim</tt> is also necessary if we want to update the data</li>
+<li><tt>--flat-nodes ~/osm/flat_nodes.bin</tt> tells osm2pgsql to use the flat nodes mode and where to store the data. In this mode, instead of storing node locations in the database, they are stored in a flat binary file. This takes much less space and is faster, particularly on HDDs.</li>
+<li><tt>--cache 14000</tt> causes 14000 MB of memory to be allocated as a cache for node positions. Having the node positions cached means that there are fewer reads from the database and constructing way geometries is much faster. If the machine you are using has enough memory, allocate up to 20000MB. There is no point to allocating even more memory as it will go unused.</li>
+<li><tt>--number-processes 4</tt> causes 4 CPU cores to be used. This should be adjusted to the number of threads the CPU supports, but there are minimal gains past 8 CPU threads.</li>
+<li><tt>--style ~/osm/openstreetmap-carto/openstreetmap-carto.style</tt> gives the path to the .style file which tells osm2pgsql what columns to create</li>
+<li><tt>--hstore</tt> causes tags not in the .style file to be stored in a special “hstore” column. Hstore is a key-value store that supports arbitrary keys and values. Having other tags in hstore allows changes later on, like rendering names in a specific language and overall makes the database more flexible, giving you greater freedom to render interesting data on maps you create. There is a <a href="http://www.paulnorman.ca/blog/2014/03/osm2pgsql-and-hstore/">very minor speed and 10% database size penalty</a> to having hstore.</li>
+<li><tt>--multi-geometry</tt> tells osm2pgsql not to break MULTIPOLYGONs into separate polygons. This increases <a href="http://www.paulnorman.ca/blog/2014/03/osm2pgsql-multipolygons/">flexibility and eliminates some rendering artifacts</a>, but is slightly slower.</li>
+<li><tt>~/osm/new_planet-latest.osm.pbf</tt> is the path to the OSM data to load</li>
+</ul>
+<p>When loading the full planet it will take some time to build the indexes, so it may appear like nothing is happening at the end. You can examine what is happening in the database with <tt>pg_top -d gis</tt></p>
+<h1>Using your database</h1>
+<p>When osm2pgsql has finished it will print how long it took. Once it’s done, you can do a few things with it</p>
+<ul>
+<li>Design beautiful maps with TileMill</li>
+<li>Render tiles with a tile server</li>
+<li>Keep the data up to date with published updates</li>
+<li>Connect using GIS tools like <a href="http://qgis.org/">QGIS</a>, ESRI ArcGIS or others</li>
+</ul>
+
+							</div>
+		</div>
