@@ -1,0 +1,52 @@
+<div class="pages">
+<div class="title">
+<h1><a href="http://switch2osm.org/serving-tiles/" title="Servir des tuiles">Servir des tuiles</a></h1>
+</div>
+
+<div class="meta">&nbsp;</div>
+
+<div class="entry">
+<p>Les tuiles de fournisseurs tierce-partie sont le plus simple moyen de faire le passage &agrave; OpenStreetMap, et offrent une clart&eacute; de co&ucirc;ts. Cependant, si vous souhaitez prendre le contr&ocirc;le complet de votre destin&eacute;e, vou pouvez faire le rendu et servir vos propres tuiles. Cette section explique comment.</p>
+
+<p><img alt="" class="aligncenter size-full wp-image-182" height="231" src="http://switch2osm.org/wp-content/uploads/2012/01/serving-tiles.png" title="Serving Tiles" width="510" /></p>
+
+<h2>Es-ce que c&#39;est vraiment pour vous?</h2>
+
+<p>A la fois g&eacute;n&eacute;rer et servir des tuiles entra&icirc;ne des besoins mat&eacute;riel significatifs, en particulier si vous avez besoin d&#39;une couverture globale et de mises &agrave; jour r&eacute;guli&egrave;res.</p>
+
+<p>Si vous configurez votre propre serveur de tuiles, nous recommandons d&#39;utiliser <a href="http://www.ubuntu.com/">Ubuntu (une distribution Linux)</a>.</p>
+
+<h2>Les options</h2>
+
+<ol>
+	<li><a href="http://switch2osm.org/serving-tiles/building-a-tile-server-from-packages/" title="Building a tile server from packages">Faire votre serveur de tuiles en utilisant des paquets</a></li>
+	<li><a href="http://switch2osm.org/serving-tiles/manually-building-a-tile-server/" title="Manually building a tile server">Cr&eacute;er un serveur de tuiles depuis les sources</a></li>
+	<li><a href="http://switch2osm.org/serving-tiles/using-an-all-in-one-solution/" title="Using an all-in-one solution">Utiliser une solution &quot;tout en un&quot;</a></li>
+</ol>
+
+<h2>Pr&eacute;requis syst&egrave;me</h2>
+
+<p>Servir vos propres cartes est une t&acirc;che assez intensive. En fonction de la taille de l&#39;aire qui vous int&eacute;resse pour servir les tuiles et du trafic que vous attendez, les besoins syst&egrave;me varieront. En g&eacute;n&eacute;ral, les besoins pourront aller de 10-20GB de stockage, 4GB de m&eacute;moire et processeur double coeur moderne pour une r&eacute;gion de la taille d&#39;une ville &agrave; 300GB+ de stockage rapide(type SSD), 24GB de m&eacute;moire, et un processeur quatre coeurs pour un &quot;planet&quot; (l&#39;ensemble de la donn&eacute;e mondiale de la base OSM &agrave; une date donn&eacute;e) entier.</p>
+
+<p>Nous nous recommandons de commerncer avec des extraits de la donn&eacute;e OpenStreetMap &ndash; par exemple, une ville, une r&eacute;gion ou un petit pays &ndash; plut&ocirc;t que de passer une semaine &agrave; importer le monde entier (planet.osm) et ensuite avoir &agrave; recommencer &agrave; cause d&#39;une erreur de configuration! Vous pouvez t&eacute;l&eacute;charger des extractions depuis :</p>
+
+<ul>
+	<li><a href="http://download.geofabrik.de/osm/">Geofabrik</a> (pays et r&eacute;gions)</li>
+	<li><a href="https://mapzen.com/metro-extracts/">Metro extracts</a> (aires m&eacute;tropolitaines)</li>
+</ul>
+
+<h2>La cha&icirc;ne d&#39;outils</h2>
+
+<p>Nous utilisons une s&eacute;rie d&#39;outils pour g&eacute;n&eacute;rer et servir les tuiles cartographiques.</p>
+
+<p><strong>Apache</strong> fournit le serveur en front qui g&egrave;re les requ&ecirc;tes depuis votre navigateur web et passe les requ&ecirc;tes &agrave; mod_tile. Le serveur web Apache peut aussi &ecirc;tre utilis&eacute; pour fournir des contenus web statiques comme le HTML, le JavaScript, ou le CSS pour votre page web cartographique.</p>
+
+<p>Une fois que Apache a g&eacute;r&eacute; la requ&ecirc;te de la part de l&#39;utilisateur web, il passe la requ&ecirc;te &agrave; <strong>mod_tile</strong> pour la g&eacute;rer. Mod_tile v&eacute;rifie si la tuile a d&eacute;j&agrave; &eacute;t&eacute; cr&eacute;&eacute;e et est pr&ecirc;te &agrave; &ecirc;tre utilis&eacute;e ou bien au contraire, si elle doit &ecirc;tre mise &agrave; jour du fait qu&#39;elle qu&#39;elle ne serait pas d&eacute;j&agrave; en cache. Si le cache est d&eacute;j&agrave; disponible et ne n&eacute;cessite pas d&#39;&ecirc;tre rendu, alors il renvoie imm&eacute;diatement la tuile au client. Si il a besoin d&#39;&ecirc;tre rendu, alors il&nbsp; s&#39;ajoutera dans une queue de&nbsp; &ldquo;requ&ecirc;tes de rendu&rdquo;, et quand il sera en haut de la queue de traitement, un rendu de tuiles g&eacute;n&eacute;r&eacute;ra le cache et il renverra la tuile au client.</p>
+
+<p>Nous utilisons un outil appel&eacute; <strong>Mapnik</strong> pour faire le rendu des tuiles. Il r&eacute;cup&egrave;re les requ&ecirc;tes de la queue de travail aussi vite qu&#39;il est possible, extrait les donn&eacute;es depuis de nombreuses sources selon les informations de style, et faire le rendu de la tuile. Cette tuile est renvoy&eacute;e au client et Mapnik passe &agrave; l&#39;&eacute;l&eacute;ment suivant dans la queue.</p>
+
+<p>Pour faire le rendu, la donn&eacute;e OpenStreetMap est stock&eacute;e dans une base de donn&eacute;es <strong>PostgreSQL</strong> cr&eacute;&eacute;e par un outil appel&eacute; <strong>osm2pgsql</strong>. Ces deux morceaux fonctionnent ensemble pour permettre un acc&egrave;s efficace &agrave; la donn&eacute;e g&eacute;ographique OpenStreetMap. Il est possible de garder la donn&eacute;e dans la base de donn&eacute;es PostgreSQL mise &agrave; jour en utilisant un flux de fichiers de diff&eacute;rence produit chaque 60 secondes sur le serveur principal OpenStreetMap.</p>
+
+<p>&nbsp;</p>
+</div>
+</div>

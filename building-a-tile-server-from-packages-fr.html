@@ -1,0 +1,211 @@
+<div class="pages">
+<div class="title">
+<h1><a href="http://switch2osm.org/serving-tiles/building-a-tile-server-from-packages/" title="Construire un serveur de tuiles depuis des paquets">Construire un serveur de tuiles depuis des paquets</a></h1>
+</div>
+
+<div class="meta">&nbsp;</div>
+
+<div class="entry">
+<p>Si vous souhaitez construire votre propre serveur de tuiles, utiliser des paquets peut vous &eacute;conomiser une grande partie du travail d&#39;installation.</p>
+
+<p>Ces paquets marchent avec <a href="http://www.ubuntu.com/">Ubuntu Linux</a> version 12.04 LTS (Precise Pangolin) et sup&eacute;rieure. Apr&egrave;s installation, vous devriez avoir votre propre serveur de tuiles avec les feuilles de style Mapnik OSM standarddans lequel vous pouvez importer un extrait des donn&eacute;es OSM pour faire le rendu.</p>
+
+<p>Il est bas&eacute; sur le m&ecirc;me logiciel que les serveurs de tuiles OSM officiels utilise:</p>
+
+<ul>
+	<li>mod_tile pour servir</li>
+	<li>renderd comme d&eacute;mon de rendu</li>
+	<li>mapnik pour le rendu &agrave; proprement parler</li>
+</ul>
+
+<p>Le but principal de ces paquets est de simplifier l&#39;installation, en l&#39;automatisant autant que possible dans des scripts de packaging.</p>
+
+<h2>Installation</h2>
+
+<p>Les commandes suivantes doivent &ecirc;tre entr&eacute;es dans le terminal pour configurer les choses :</p>
+
+<p>Dans le cas, o&ugrave; vous n&#39;avez pas add-apt-repository install&eacute;, ajoutez-le avec:</p>
+
+<p>pour Ubuntu 12.04</p>
+
+<pre>
+sudo apt-get install python-software-properties</pre>
+
+<p>pour Ubuntu 12.10 et sup&eacute;rieurs</p>
+
+<pre>
+sudo apt-get install software-properties-common</pre>
+
+<div>Ajoutez le d&eacute;p&ocirc;t contenant les paquets:</div>
+
+<pre>
+sudo add-apt-repository ppa:kakrueger/openstreetmap</pre>
+
+<p>Mettre &agrave; jour la liste des paquets locaux pour r&eacute;cup&eacute;rer les infos du nouveau d&eacute;p&ocirc;t:</p>
+
+<pre>
+sudo apt-get update</pre>
+
+<p>Installer le paquet libapache2-mod-tile et ses d&eacute;pendances. Pendant la configuration, il vous sera demand&eacute; quelques questions. Pour vous assurer que les scripts d&#39;installation fonctionnent, vous devez garder ceux par d&eacute;faut. Cependant, dans le cas de la question des permissions utilisateurs pour la base de donn&eacute;es, vous pouvez souhaiter ajouter votre propre nom d&#39;utilisateur apr&egrave;s l&#39;utilisateur www-data s&eacute;par&eacute; par un espace pour &ecirc;tre capable d&#39;importer la donn&eacute;e avec votre utilisateur.</p>
+
+<pre>
+sudo apt-get install libapache2-mod-tile</pre>
+
+<h2>Importer les donn&eacute;es cartographiques</h2>
+
+<p>T&eacute;l&eacute;chargez les donn&eacute;es OpenStreetMap dont vous souhaitez faire le rendu (des fichiers planet complets peuvent &ecirc;tre trouv&eacute;s sur <a href="http://planet.openstreetmap.org" title="planet.openstreetmap.org">planet.openstreetmap.org</a>, des extraits par pays peuvent &ecirc;tre trouv&eacute;s sur <a href="http://download.geofabrik.de/osm/">download.geofabrik.de</a>). avec:</p>
+
+<pre>
+wget http://download.geofabrik.de/openstreetmap/europe/ireland-and-northern-ireland.osm.pbf</pre>
+
+<p>Importez la donn&eacute;e dans votre base de donn&eacute;es postgresql avec osm2pgsql. Il y a un certain nombre de param&egrave;tres diff&eacute;rents que vous pouvez utiliser avec osm2pgsql qui d&eacute;pendent du mat&eacute;riel disponible et de la taille des donn&eacute;es extraites que vous souhaitez importer. Ceux que vous &ecirc;tes le plus susceptibles d&#39;utiliser sont &ldquo;-C&rdquo;, &ldquo;&ndash;slim&rdquo; et &ldquo;&ndash;number-processes&rdquo;.<em> -C</em> et sp&eacute;cifient le nombre de Mb qu&#39;osm2pgsql utilisera pour cacher la donn&eacute;e. Donc cela d&eacute;pend de la quantit&eacute; de RAM que vous vez de disponible.<em> &ndash;slim</em> garde la donn&eacute;e osm compl&egrave;te sur le disque, n&eacute;cessaire pour les mises &agrave; jour et les environnements avec une faible m&eacute;moire. <em>&ndash;number-processes</em> sp&eacute;cifie le nombre de processus en&nbsp; parall&egrave;lle qui peuvent &ecirc;tre utilis&eacute;s pour certaines parties du processus d&#39;import. La valeur optimale d&eacute;pend principalement de la vitesse du disque dur syst&egrave;me et du nombre de coeur disponibles.</p>
+
+<pre>
+osm2pgsql --slim -C 1500 --number-processes 4 ireland-and-northern-ireland.osm.pbf</pre>
+
+<p>En fonction de la taille de l&#39;extrait que vous importez et des performances de l&#39;ordinateur, cela peut prendre un temps pouvant aller de quelques minutes pour des petites extraits jusqu&#39;&agrave; plusieurs jours pour un planet complet sur des machines plus lentes! Si vous importez un planet complet, il est fortement recommand&eacute; de d&eacute;finir <em>-C 18000</em> (18 GB de cache ram, susceptible d&#39;augmenter au fur et &agrave; mesure de l&#39;accroissement de la base de donn&eacute;es OSM). Cela peut entrainer un swap sur le serveur pendant l&#39;import si vous n&#39;avez pas assez de m&eacute;moire, mais dans de nombreux cas, ce sera toujours plus rapide que d&#39;utiliser des petites valeurs pour le noeud en cache. Cependant, vous devez vous assurez d&#39;avoir suffisamment de m&eacute;moire swap configur&eacute;e.</p>
+
+<p>Si vous importez un fichier planet complet, vous voudrez peut &ecirc;tre aussi utiliser l&#39;option <em>&ndash;flat-nodes</em>. Elle utilise un format de fichier personnalis&eacute; pour quelques-unes des donn&eacute;es plut&ocirc;t qu&#39;une base de donn&eacute;es postgis qui la rend plus efficace, mais moins efficace pour les extraits r&eacute;gionaux. Cela peut aussi faire sens de changer temporairement vos configurations PostgreSQL pednant l&#39;import. (Par exemple, augmenter le nombre de segments de v&eacute;rification &quot;checkpoint_segments&quot; et r&eacute;duire la taille du tampon partag&eacute; &quot;shared buffer&quot;.)</p>
+
+<p>Une large proportion du temps d&#39;import ainsi que la taille de la base de donn&eacute;es sont utilis&eacute;s pour cr&eacute;er des index pour garder la trace des mises &agrave; jour. Si vous ne planifiez pas de garder la base de donn&eacute;es en permanence &agrave; jour avec des fichiers &ldquo;diff&rdquo;, vous voudrez peut &ecirc;tre importer la donn&eacute;e avec l&#39;option <em>&ndash;drop</em> qui supprimera les tables &ldquo;slim-tables&rdquo; apr&egrave;s import qui ne sont pas n&eacute;cessaires pour faire le rendu et ne cr&eacute;&eacute;ent pas les index qui sont seulement n&eacute;cessaires pour le support des imports diff. Une fois que vous faites des mises &agrave; jour moins r&eacute;guli&egrave;rement que peut &ecirc;tre toutes les 1 &ndash; 2 semaines, cela peut &ecirc;tre plus efficace de refaire les r&eacute;imports complets chaque fois plut&ocirc;t que d&#39;utiliser les mises &agrave; jour.</p>
+
+<p>mod_tile est con&ccedil;u pour toujours servir des tuiles &agrave; jour (voir la section Mise &agrave; jour plus loin). Comme il n&#39;est g&eacute;n&eacute;ralement pas faisable de re-rendre toutes les tuiles chang&eacute;es au moment du changement, mod_tile initie le re-rendu des tuiles pas &agrave; jour au moment de les servir. Ainsi mod_tile n&eacute;cessite de savoir quand le planet a &eacute;t&eacute; import&eacute;. Cela est effectu&eacute; en changeant le timestamp sur le fichier planet-import-complete</p>
+
+<pre>
+touch /var/lib/mod_tile/planet-import-complete</pre>
+
+<p>Enfin, vous devez red&eacute;marrer le d&eacute;mon de rendu apr&egrave;s quoi tout devrait &ecirc;tre pr&ecirc;t.</p>
+
+<pre>
+sudo /etc/init.d/renderd restart</pre>
+
+<p>Si tout a fonctionn&eacute; correctement, vous devriez avoir un serveur de tuiles fonctionnel et vous devriez voir ses r&eacute;sultats en allant sur http://localhost/osm/slippymap.html</p>
+
+<p>Si vous n&#39;ouvrez pas slippymap.html sur localhost et que vous ne voyez que des tuiles roses, vous devrez &eacute;diter la page html et remplacer localhost avec le nom correct du serveur dans &lsquo;new OpenLayers.Layer.OSM(&ldquo;Local Tiles&rdquo;&hellip;&rsquo; ou la changer en une URL relative.</p>
+
+<h2>Mise &agrave; jour</h2>
+
+<p>Les commandes suivantes expliquent comment garder votre serveur de tuiles &ccedil; jour avec les derni&egrave;res donn&eacute;es OSM.</p>
+
+<p>Apr&egrave;s l&#39;importation initiale de la base de donn&eacute;es avec osm2pgsql comme d&eacute;crite au dessus (vous devrez utiliser l&#39;option &ndash;slim dans l&#39;import initial pour permettre la mise &agrave; jour), vous devrez suivre les &eacute;tapes suivantes</p>
+
+<p>Installez osmosis</p>
+
+<pre>
+sudo apt-get install osmosis</pre>
+
+<p>Donnez les droits au tables de mise &agrave; jour &agrave; l&#39;utilisateur www-data</p>
+
+<pre>
+sudo /usr/bin/install-postgis-osm-user.sh gis www-data</pre>
+
+<p>Initialisez le processus de r&eacute;plication de donn&eacute;es osmosis de votre import de donn&eacute;es. Choisissez la date de la donn&eacute;e du planet, comme c&#39;est la date &agrave; laquelle les diffs vont commencer.</p>
+
+<pre>
+sudo -u www-data /usr/bin/openstreetmap-tiles-update-expire 2012-04-21</pre>
+
+<p>Comme le script packag&eacute; utilise actuellement un service non &agrave; jour pour d&eacute;terminer le point de d&eacute;part correct de la r&eacute;plication, vous devrez manuellement choisir et t&eacute;l&eacute;charger le fichier state.txt correct depuis la <em>base_url</em> (voir ci-dessous) qui correspond &agrave; un moment l&eacute;g&egrave;rement avant l&#39;&acirc;ge de l&#39;extrait pour vous assurer que toutes les modifications sont incluses dans votre base de donn&eacute;es. Cela n&eacute;cessite d&#39;&ecirc;tre copi&eacute; dans /var/lib/mod_tile/.osmosis/state.txt</p>
+
+<p>Vous devrez ensuite mettre &agrave; jour la configuration par d&eacute;faut de osmosis. Dans /var/lib/mod_tile/.osmosis/configuration.txt changez la<em> base_url</em> &agrave;<br />
+&ldquo;<a href="http://planet.openstreetmap.org/replication/minute/">http://planet.openstreetmap.org/replication/minute/</a>&rdquo;</p>
+
+<p>Mettez &agrave; jour votre serveur de tuiles de plus d&#39;une heure et expirez les tuiles d&eacute;j&agrave; rendues correspondantes</p>
+
+<pre>
+sudo -u www-data /usr/bin/openstreetmap-tiles-update-expire.sh</pre>
+
+<p>Si votre serveur de tuiles a plus d&#39;une heure de d&eacute;calage, vousdevrez appeler le script openstreetmap-tiles-expire de multiples fois. Si vous souhaitez garder continuellement les donn&eacute;es de votre serveur &agrave; jour, vous devrez ajouter le script openstreetmap-tiles-expire.sh &agrave; votre crontab.</p>
+
+<p>Garder la donn&eacute;e &agrave; jour peut &ecirc;tre consommateur intense de ressources, en particulier parce qu&#39;apr&egrave;s l&#39;import, vous risquez d&eacute;j&agrave; d&#39;&ecirc;tre d&eacute;cal&eacute; de plusieurs jours. Consid&eacute;rez de changer maxInterval dans /var/lib/mod_tile/.osmosis/configuration.txt &agrave; 21600 (six hours) jusqu&#39;&agrave; ce que vous ayiez rattrap&eacute; votre retard. De plus, ajoutez &ldquo;&ndash;number-processes 2&Prime; &agrave; la commande osm2pgsql dans /usr/bin/openstreetmap-tiles-update-expire.sh ou un nombre plus &eacute;lev&eacute; si c&#39;est appropri&eacute; &agrave; votre mat&eacute;riel.</p>
+
+<p>L&#39;installation initiale a install&eacute; les bords de c&ocirc;te pr&eacute;trait&eacute;s. De temps &agrave; autre, cela peut faire sens de remplacer les fichiers avec de nouvelles versions:</p>
+
+<pre>
+wget http://tile.openstreetmap.org/processed_p.tar.bz2</pre>
+
+<p>et extrayez les dans</p>
+
+<pre>
+/etc/mapnik-osm-data/world_boundaries/</pre>
+
+<h2>R&eacute;solution des probl&egrave;mes</h2>
+
+<p>Il y a un certain nombre de choses qui peuvent aller mal. Voici quelques uns des probl&egrave;mes courants et leurs solutions:</p>
+
+<h3>La connexion &agrave; votre base de donn&eacute;es a &eacute;chou&eacute;e dans osm2pgsql</h3>
+
+<p>Si vous rencontrez le message d&#39;erreur suivant quand vous importez la donn&eacute;e avec osm2pgsql, vous avez surement oubli&eacute; d&#39;ajouter votre nom d&#39;utilisateur dans la section des utilisateurs autoris&eacute;s pendant la configuration. &quot;Connection to database Failed: FATAL: Ident authentication failed for user &ldquo;xyz&rdquo;&quot;</p>
+
+<p>Vous pouvez corriger ceci avec l&#39;une de ces deux mani&egrave;res:</p>
+
+<p>Indiff&eacute;remment, vous reconfigurez le paquet, cette fois en incluant &agrave; la fois www-data et votre propre nom d&#39;utilisateur dans une liste s&eacute;par&eacute;e par un espace,</p>
+
+<pre>
+sudo dpkg-reconfigure openstreetmap-postgis-db-setup</pre>
+
+<p>Ou, vous pouvez manuellement accorder des permissions &agrave; votre compte utilisateur avec la commande suivante:</p>
+
+<pre>
+sudo /usr/bin/install-postgis-osm-user.sh gis xyz</pre>
+
+<h3>Mat&eacute;riel</h3>
+
+<p>Les besoins mat&eacute;riel peuvent &ecirc;tre assez exigeants si vous souhaitez faire le rendu de larges zones, mais ne sont pas trop mauvais si vous &ecirc;tes int&eacute;ress&eacute;s dans les zones plus petites. Pour une PC bureautique standard (environ 4 GB de ram, un disque dur standard, un processeur deux &ndash; quatre coeurs), un extrait d&#39;une taille d&#39;environ 100 &ndash; 300 Mb est raisonnable (le temps d&#39;importation est de l&#39;ordre de une heure).</p>
+
+<p>Si vous voulez importer et faire le rendu du monde entier, vous aurez besoin d&#39;un serveur consid&eacute;rablement plus costaud qu&#39;un ordinateur de bureau typique, c&#39;est &agrave; dire 24Gb de RAM ou plus. Il est aussi recommand&eacute; d&#39;utiliser un SSD pour la base de donn&eacute;es&nbsp; ou au minimum un ensemble RAID rapide. L&#39;import planet complet fait environ 256GB, ainsi pour stocker toute la base de donn&eacute;es sur un SSD, vous devriez avoir besoin d&#39;un SSD de 512GB. Un import qui n&#39;est pas mis &agrave; jour et utilise l&#39;option &ndash;drop d&#39;un autre c&ocirc;t&eacute; devrait d&eacute;j&agrave; pouvoir rentrer sur un SSD 256GB. Vous pouvez aussi mettre de mani&egrave;re s&eacute;lective les parties les plus importantes da la base de donn&eacute;es sur un SSD et le reste sur des disques plus lents. Osm2pgsql supporte l&#39;utilisation d&#39;espace de noms s&eacute;par&eacute;s pour diff&eacute;rentes parties de la base de donn&eacute;es dans ce but.</p>
+
+<h2>Aide</h2>
+
+<h3>O&ugrave; sont les diff&eacute;rents fichiers (base de donn&eacute;es / Tuiles, etc.) ?</h3>
+
+<ul>
+	<li>Les feuilles de style et bordures de mer sont dans /etc/mapnik-osm-data</li>
+	<li>Les tuiles sont dans /var/lib/mod_tile</li>
+	<li>La configuration de renderd dans /etc/renderd.conf</li>
+	<li>La configuration de mod_tile configuration dans /etc/apache2/sites-available/tileserver_site</li>
+	<li>Les scripts sont dans /usr/bin</li>
+	<li>La configuration de la base de donn&eacute;es est dans /etc/postgresql/X.X/main (o&ugrave; X.X est la version PostgreSQL, par exemple 9.1)</li>
+	<li>La configuration osm2pgsql et state.txt est dans /var/lib/mod_tile/.osmosis</li>
+</ul>
+
+<h3>Comment je fais le pr&eacute;-rendu des tuiles ?</h3>
+
+<p>Vous pouvez utiliser render_list pour faire le pr&eacute;-rendu de tuiles:</p>
+
+<pre>
+Usage: render_list [OPTION] ...
+ -a, --all render all tiles in given zoom level range instead of reading from STDIN
+ -f, --force render tiles even if they seem current
+ -m, --map=MAP render tiles in this map (defaults to &#39;default&#39;)
+ -l, --max-load=LOAD sleep if load is this high (defaults to 5)
+ -s, --socket=SOCKET unix domain socket name for contacting renderd
+ -n, --num-threads=N the number of parallel request threads (default 1)
+ -t, --tile-dir tile cache directory (defaults to &#39;/var/lib/mod_tile&#39;)
+ -z, --min-zoom=ZOOM filter input to only render tiles greater or equal to this zoom level (default is 0)
+&nbsp;-Z, --max-zoom=ZOOM filter input to only render tiles less than or equal to this zoom level (default is 18)</pre>
+
+<p>Si vous utiliser &ndash;all, vous pouvez restreindre le nombre de tuiles en ajoutant ces options:</p>
+
+<pre>
+ -x, --min-x=X minimum X tile coordinate
+ -X, --max-x=X maximum X tile coordinate
+ -y, --min-y=Y minimum Y tile coordinate
+ -Y, --max-y=Y maximum Y tile coordinate</pre>
+
+<p>Sans &ndash;all, envoie une liste de tuiles devant &ecirc;tre rendues depuis STDIN (l&#39;entr&eacute;e standard) dans le format X Y Z, c&#39;est &agrave; dire :</p>
+
+<pre>
+0 0 1
+0 1 1
+1 0 1
+1 1 1</pre>
+
+<p>Ce qui pr&eacute;c&egrave;de va permettre aux 4 tuiles au zoom 1 d&#39;&ecirc;tre g&eacute;n&eacute;r&eacute;es.</p>
+
+<p>Notez que vous avez &agrave; d&eacute;finir &ndash;socket=/var/run/renderd/renderd.sock</p>
+
+<h2>Remerciements</h2>
+
+<p>Merci &agrave; Kai Krueger pour la maintenance des paquets et la pr&eacute;paration de la documentation.</p>
+</div>
+</div>
